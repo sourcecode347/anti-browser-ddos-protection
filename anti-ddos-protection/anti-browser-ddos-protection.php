@@ -1,8 +1,8 @@
 <?php
 /*
 Plugin Name: Anti Browser DDoS Protection
-Description: Rate limiting with admin panel, bot exclusions, bot IP ranges management with duplicate removal, high traffic bot logging, static asset exclusion, blocked IP logging, IP banning, and Cloudflare real IP support.
-Version: 2.16
+Description: Rate limiting with admin panel, bot exclusions, bot IP ranges management with duplicate removal, high traffic bot logging, static asset exclusion, blocked IP logging with User Agent, IP banning with User Agent, and Cloudflare real IP support.
+Version: 2.17
 Author: SourceCode347
 License: GPL v2 or later
 Text Domain: anti-browser-ddos-protection
@@ -512,7 +512,29 @@ function abdp_settings_page() {
     $banned_ips = get_option('abdp_banned_ips', array());
     $high_traffic_bots = get_option('abdp_high_traffic_bots', array());
     ?>
+    <style>
+        .abdp-donate-link {
+            position: relative;
+            margin-bottom: 20px;
+            text-align: right;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .abdp-donate-link a {
+            color: #0073aa;
+            text-decoration: none;
+        }
+        .abdp-donate-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
     <div class="wrap">
+        <div class="abdp-donate-link">
+            <?php printf(
+                esc_html__('Support this project with one %s', 'anti-browser-ddos-protection'),
+                '<a href="https://buy.stripe.com/bIY5o70SSfam8Qo7ss" target="_blank">' . esc_html__('Donate', 'anti-browser-ddos-protection') . '</a>'
+            ); ?>
+        </div>
         <h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
         
         <h2><?php echo esc_html__( 'Rate Limiting Settings', 'anti-browser-ddos-protection' ); ?></h2>
@@ -578,6 +600,7 @@ function abdp_settings_page() {
                 <thead>
                     <tr>
                         <th><?php echo esc_html__( 'IP Address', 'anti-browser-ddos-protection' ); ?></th>
+                        <th><?php echo esc_html__( 'User Agent', 'anti-browser-ddos-protection' ); ?></th>
                         <th><?php echo esc_html__( 'Timestamp', 'anti-browser-ddos-protection' ); ?></th>
                     </tr>
                 </thead>
@@ -585,6 +608,7 @@ function abdp_settings_page() {
                     <?php foreach ($blocked_ips as $entry) : ?>
                         <tr>
                             <td><?php echo esc_html( $entry['ip'] ); ?></td>
+                            <td><?php echo esc_html( $entry['user_agent'] ); ?></td>
                             <td><?php echo esc_html( wp_date( 'Y-m-d H:i:s', $entry['timestamp'] ) ); ?></td>
                         </tr>
                     <?php endforeach; ?>
@@ -604,6 +628,7 @@ function abdp_settings_page() {
                 <thead>
                     <tr>
                         <th><?php echo esc_html__( 'IP Address', 'anti-browser-ddos-protection' ); ?></th>
+                        <th><?php echo esc_html__( 'User Agent', 'anti-browser-ddos-protection' ); ?></th>
                         <th><?php echo esc_html__( 'Timestamp', 'anti-browser-ddos-protection' ); ?></th>
                         <th><?php echo esc_html__( 'Expires', 'anti-browser-ddos-protection' ); ?></th>
                     </tr>
@@ -612,6 +637,7 @@ function abdp_settings_page() {
                     <?php foreach ($banned_ips as $entry) : ?>
                         <tr>
                             <td><?php echo esc_html( $entry['ip'] ); ?></td>
+                            <td><?php echo esc_html( $entry['user_agent'] ); ?></td>
                             <td><?php echo esc_html( wp_date( 'Y-m-d H:i:s', $entry['timestamp'] ) ); ?></td>
                             <td><?php echo esc_html( wp_date( 'Y-m-d H:i:s', $entry['expires'] ) ); ?></td>
                         </tr>
@@ -685,9 +711,10 @@ function abdp_sanitize_blocked_ips($input) {
     }
     $sanitized = array();
     foreach ($input as $entry) {
-        if (isset($entry['ip'], $entry['timestamp']) && filter_var($entry['ip'], FILTER_VALIDATE_IP) && is_numeric($entry['timestamp'])) {
+        if (isset($entry['ip'], $entry['user_agent'], $entry['timestamp']) && filter_var($entry['ip'], FILTER_VALIDATE_IP) && is_string($entry['user_agent']) && is_numeric($entry['timestamp'])) {
             $sanitized[] = array(
                 'ip' => $entry['ip'],
+                'user_agent' => sanitize_text_field($entry['user_agent']),
                 'timestamp' => absint($entry['timestamp']),
             );
         }
@@ -702,9 +729,10 @@ function abdp_sanitize_banned_ips($input) {
     }
     $sanitized = array();
     foreach ($input as $entry) {
-        if (isset($entry['ip'], $entry['timestamp'], $entry['expires']) && filter_var($entry['ip'], FILTER_VALIDATE_IP) && is_numeric($entry['timestamp']) && is_numeric($entry['expires'])) {
+        if (isset($entry['ip'], $entry['user_agent'], $entry['timestamp'], $entry['expires']) && filter_var($entry['ip'], FILTER_VALIDATE_IP) && is_string($entry['user_agent']) && is_numeric($entry['timestamp']) && is_numeric($entry['expires'])) {
             $sanitized[] = array(
                 'ip' => $entry['ip'],
+                'user_agent' => sanitize_text_field($entry['user_agent']),
                 'timestamp' => absint($entry['timestamp']),
                 'expires' => absint($entry['expires']),
             );
@@ -749,7 +777,7 @@ function abdp_rate_limit() {
         return;
     }
 
-    $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    $user_agent = sanitize_text_field($_SERVER['HTTP_USER_AGENT'] ?? '');
 
     // Check if the user agent is an excluded bot with verified IP
     if (abdp_is_excluded_bot() && !abdp_is_suspicious_bot($ip, $user_agent)) {
@@ -783,6 +811,7 @@ function abdp_rate_limit() {
         $blocked_ips = get_option('abdp_blocked_ips', array());
         $blocked_ips[] = array(
             'ip' => $ip,
+            'user_agent' => $user_agent,
             'timestamp' => time(),
         );
         update_option('abdp_blocked_ips', $blocked_ips);
@@ -809,6 +838,7 @@ function abdp_rate_limit() {
             $blocked_ips = get_option('abdp_blocked_ips', array());
             $blocked_ips[] = array(
                 'ip' => $ip,
+                'user_agent' => $user_agent,
                 'timestamp' => time(),
             );
             update_option('abdp_blocked_ips', $blocked_ips);
@@ -830,6 +860,7 @@ function abdp_rate_limit() {
                 $banned_ips = get_option('abdp_banned_ips', array());
                 $banned_ips[] = array(
                     'ip' => $ip,
+                    'user_agent' => $user_agent,
                     'timestamp' => time(),
                     'expires' => time() + $ban_duration,
                 );
