@@ -2,7 +2,7 @@
 /*
 Plugin Name: Anti Browser DDoS Protection
 Description: Rate limiting with admin panel, bot exclusions, bot IP ranges management with duplicate removal, high traffic bot logging, static asset exclusion, blocked IP logging, IP banning, and Cloudflare real IP support.
-Version: 2.15
+Version: 2.16
 Author: SourceCode347
 License: GPL v2 or later
 Text Domain: anti-browser-ddos-protection
@@ -511,10 +511,6 @@ function abdp_settings_page() {
     $blocked_ips = get_option('abdp_blocked_ips', array());
     $banned_ips = get_option('abdp_banned_ips', array());
     $high_traffic_bots = get_option('abdp_high_traffic_bots', array());
-
-    // Set Greece timezone for display and logging
-    $original_timezone = date_default_timezone_get();
-    date_default_timezone_set('Europe/Athens');
     ?>
     <div class="wrap">
         <h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
@@ -582,14 +578,14 @@ function abdp_settings_page() {
                 <thead>
                     <tr>
                         <th><?php echo esc_html__( 'IP Address', 'anti-browser-ddos-protection' ); ?></th>
-                        <th><?php echo esc_html__( 'Timestamp (Greece Time)', 'anti-browser-ddos-protection' ); ?></th>
+                        <th><?php echo esc_html__( 'Timestamp', 'anti-browser-ddos-protection' ); ?></th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($blocked_ips as $entry) : ?>
                         <tr>
                             <td><?php echo esc_html( $entry['ip'] ); ?></td>
-                            <td><?php echo esc_html( date_i18n( 'Y-m-d H:i:s', $entry['timestamp'] ) ); ?></td>
+                            <td><?php echo esc_html( wp_date( 'Y-m-d H:i:s', $entry['timestamp'] ) ); ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -608,16 +604,16 @@ function abdp_settings_page() {
                 <thead>
                     <tr>
                         <th><?php echo esc_html__( 'IP Address', 'anti-browser-ddos-protection' ); ?></th>
-                        <th><?php echo esc_html__( 'Timestamp (Greece Time)', 'anti-browser-ddos-protection' ); ?></th>
-                        <th><?php echo esc_html__( 'Expires (Greece Time)', 'anti-browser-ddos-protection' ); ?></th>
+                        <th><?php echo esc_html__( 'Timestamp', 'anti-browser-ddos-protection' ); ?></th>
+                        <th><?php echo esc_html__( 'Expires', 'anti-browser-ddos-protection' ); ?></th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($banned_ips as $entry) : ?>
                         <tr>
                             <td><?php echo esc_html( $entry['ip'] ); ?></td>
-                            <td><?php echo esc_html( date_i18n( 'Y-m-d H:i:s', $entry['timestamp'] ) ); ?></td>
-                            <td><?php echo esc_html( date_i18n( 'Y-m-d H:i:s', $entry['expires'] ) ); ?></td>
+                            <td><?php echo esc_html( wp_date( 'Y-m-d H:i:s', $entry['timestamp'] ) ); ?></td>
+                            <td><?php echo esc_html( wp_date( 'Y-m-d H:i:s', $entry['expires'] ) ); ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -637,7 +633,7 @@ function abdp_settings_page() {
                     <tr>
                         <th><?php echo esc_html__( 'IP Address', 'anti-browser-ddos-protection' ); ?></th>
                         <th><?php echo esc_html__( 'User Agent', 'anti-browser-ddos-protection' ); ?></th>
-                        <th><?php echo esc_html__( 'Timestamp (Greece Time)', 'anti-browser-ddos-protection' ); ?></th>
+                        <th><?php echo esc_html__( 'Timestamp', 'anti-browser-ddos-protection' ); ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -645,7 +641,7 @@ function abdp_settings_page() {
                         <tr>
                             <td><?php echo esc_html( $entry['ip'] ); ?></td>
                             <td><?php echo esc_html( $entry['user_agent'] ); ?></td>
-                            <td><?php echo esc_html( date_i18n( 'Y-m-d H:i:s', $entry['timestamp'] ) ); ?></td>
+                            <td><?php echo esc_html( wp_date( 'Y-m-d H:i:s', $entry['timestamp'] ) ); ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -659,8 +655,6 @@ function abdp_settings_page() {
         <?php endif; ?>
     </div>
     <?php
-    // Restore original timezone
-    date_default_timezone_set($original_timezone);
 }
 
 // Register settings
@@ -740,9 +734,6 @@ function abdp_sanitize_high_traffic_bots($input) {
 // Rate limiting logic
 add_action('init', 'abdp_rate_limit', 1);
 function abdp_rate_limit() {
-    // Ensure Greece timezone is set for all operations
-    date_default_timezone_set('Europe/Athens');
-
     // Skip rate limiting for admin, AJAX, CRON, REST API, static assets, or non-subscriber logged-in users
     if (is_admin() || 
         (defined('DOING_AJAX') && DOING_AJAX) || 
