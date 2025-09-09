@@ -27,6 +27,8 @@ License: GPLv2 or later
 
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
+<img src="https://github.com/sourcecode347/anti-browser-ddos-protection/blob/main/Screenshot.png" style="width:100%;height:auto;"/>
+
 Protect your WordPress site from DDoS attacks with rate limiting, bot detection, high traffic bot logging, and Cloudflare support.
 
 == Description ==
