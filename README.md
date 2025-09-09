@@ -9,6 +9,8 @@ Contributors: xAI
 
 Plugin Name: Anti Browser DDoS Protection
 
+Plugin URI: https://github.com/sourcecode347/anti-browser-ddos-protection
+
 Tags: security, ddos-protection, rate-limiting, ip-blocking, cloudflare, bot-detection
 
 Requires at least: 5.0
