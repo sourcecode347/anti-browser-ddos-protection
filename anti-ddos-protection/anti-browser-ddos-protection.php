@@ -1,8 +1,8 @@
 <?php
 /*
 Plugin Name: Anti Browser DDoS Protection
-Description: Rate limiting with admin panel, bot exclusions, bot IP ranges management with duplicate removal, static asset exclusion, blocked IP logging, IP banning, and Cloudflare real IP support.
-Version: 2.14
+Description: Rate limiting with admin panel, bot exclusions, bot IP ranges management with duplicate removal, high traffic bot logging, static asset exclusion, blocked IP logging, IP banning, and Cloudflare real IP support.
+Version: 2.15
 Author: SourceCode347
 License: GPL v2 or later
 Text Domain: anti-browser-ddos-protection
@@ -171,6 +171,7 @@ function abdp_settings_page() {
         update_option('abdp_bot_ip_ranges', $cleaned_bot_ip_ranges);
         update_option('abdp_ban_threshold', absint($_POST['abdp_ban_threshold']));
         update_option('abdp_ban_duration', absint($_POST['abdp_ban_duration']));
+        update_option('abdp_bot_max_requests', absint($_POST['abdp_bot_max_requests']));
         echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Settings saved successfully! Duplicate IP ranges have been removed.', 'anti-browser-ddos-protection') . '</p></div>';
     }
 
@@ -188,10 +189,18 @@ function abdp_settings_page() {
         echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Banned IPs log cleared successfully!', 'anti-browser-ddos-protection') . '</p></div>';
     }
 
+    // Clear high traffic bots log
+    if (isset($_POST['abdp_clear_high_traffic_bots_log'])) {
+        check_admin_referer('abdp_clear_high_traffic_bots_log');
+        delete_option('abdp_high_traffic_bots');
+        echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('High Traffic Bots log cleared successfully!', 'anti-browser-ddos-protection') . '</p></div>';
+    }
+
     $max_requests = get_option('abdp_max_requests', 10);
     $time_window = get_option('abdp_time_window', 60);
     $ban_threshold = get_option('abdp_ban_threshold', 30);
     $ban_duration = get_option('abdp_ban_duration', 24);
+    $bot_max_requests = get_option('abdp_bot_max_requests', 100);
     $excluded_bots = get_option('abdp_excluded_bots', "Googlebot\nBingbot\nSlurp\nDuckDuckBot\nTwitterbot\nMediapartners-Google\nGoogle-Display-Ads-Bot\nAdsBot\nfacebookexternalhit\nAdsBot-Google\nAppEngine-Google\nFeedfetcher-Google\nYandex\nAhrefsBot\nmsnbot\nbingbot\nStripebot");
     $bot_ip_ranges = get_option('abdp_bot_ip_ranges', implode("\n", array(
         // Googlebot and related Google bots
@@ -501,8 +510,9 @@ function abdp_settings_page() {
     )));
     $blocked_ips = get_option('abdp_blocked_ips', array());
     $banned_ips = get_option('abdp_banned_ips', array());
+    $high_traffic_bots = get_option('abdp_high_traffic_bots', array());
 
-    // Set Greece timezone for display
+    // Set Greece timezone for display and logging
     $original_timezone = date_default_timezone_get();
     date_default_timezone_set('Europe/Athens');
     ?>
@@ -514,17 +524,24 @@ function abdp_settings_page() {
             <?php wp_nonce_field('abdp_save_settings'); ?>
             <table class="form-table">
                 <tr>
-                    <th scope="row"><label for="abdp_max_requests"><?php echo esc_html__( 'Maximum Requests', 'anti-browser-ddos-protection' ); ?></label></th>
+                    <th scope="row"><label for="abdp_max_requests"><?php echo esc_html__( 'Maximum Requests (Regular Users)', 'anti-browser-ddos-protection' ); ?></label></th>
                     <td>
                         <input type="number" id="abdp_max_requests" name="abdp_max_requests" value="<?php echo esc_attr( $max_requests ); ?>" min="1" class="regular-text" required>
-                        <p class="description"><?php echo esc_html__( 'Maximum number of requests allowed per IP.', 'anti-browser-ddos-protection' ); ?></p>
+                        <p class="description"><?php echo esc_html__( 'Maximum number of requests allowed per IP for regular users and suspicious bots.', 'anti-browser-ddos-protection' ); ?></p>
                     </td>
                 </tr>
                 <tr>
                     <th scope="row"><label for="abdp_time_window"><?php echo esc_html__( 'Time Window (seconds)', 'anti-browser-ddos-protection' ); ?></label></th>
                     <td>
                         <input type="number" id="abdp_time_window" name="abdp_time_window" value="<?php echo esc_attr( $time_window ); ?>" min="1" class="regular-text" required>
-                        <p class="description"><?php echo esc_html__( 'Time window for request counting (in seconds).', 'anti-browser-ddos-protection' ); ?></p>
+                        <p class="description"><?php echo esc_html__( 'Time window for request counting for regular users and suspicious bots (in seconds).', 'anti-browser-ddos-protection' ); ?></p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="abdp_bot_max_requests"><?php echo esc_html__( 'Maximum Requests (Excluded Bots)', 'anti-browser-ddos-protection' ); ?></label></th>
+                    <td>
+                        <input type="number" id="abdp_bot_max_requests" name="abdp_bot_max_requests" value="<?php echo esc_attr( $bot_max_requests ); ?>" min="1" class="regular-text" required>
+                        <p class="description"><?php echo esc_html__( 'Maximum number of requests allowed per minute for verified excluded bots. Bots exceeding this limit are logged as High Traffic Bots.', 'anti-browser-ddos-protection' ); ?></p>
                     </td>
                 </tr>
                 <tr>
@@ -612,6 +629,34 @@ function abdp_settings_page() {
         <?php else : ?>
             <p><?php echo esc_html__( 'No banned IPs recorded yet.', 'anti-browser-ddos-protection' ); ?></p>
         <?php endif; ?>
+
+        <h2><?php echo esc_html__( 'High Traffic Excluded Bots Log', 'anti-browser-ddos-protection' ); ?></h2>
+        <?php if (!empty($high_traffic_bots)) : ?>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th><?php echo esc_html__( 'IP Address', 'anti-browser-ddos-protection' ); ?></th>
+                        <th><?php echo esc_html__( 'User Agent', 'anti-browser-ddos-protection' ); ?></th>
+                        <th><?php echo esc_html__( 'Timestamp (Greece Time)', 'anti-browser-ddos-protection' ); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($high_traffic_bots as $entry) : ?>
+                        <tr>
+                            <td><?php echo esc_html( $entry['ip'] ); ?></td>
+                            <td><?php echo esc_html( $entry['user_agent'] ); ?></td>
+                            <td><?php echo esc_html( date_i18n( 'Y-m-d H:i:s', $entry['timestamp'] ) ); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+            <form method="post" action="">
+                <?php wp_nonce_field('abdp_clear_high_traffic_bots_log'); ?>
+                <?php submit_button( esc_html__( 'Clear High Traffic Bots Log', 'anti-browser-ddos-protection' ), 'secondary', 'abdp_clear_high_traffic_bots_log' ); ?>
+            </form>
+        <?php else : ?>
+            <p><?php echo esc_html__( 'No high traffic bots recorded yet.', 'anti-browser-ddos-protection' ); ?></p>
+        <?php endif; ?>
     </div>
     <?php
     // Restore original timezone
@@ -625,6 +670,7 @@ function abdp_register_settings() {
     register_setting('abdp_settings_group', 'abdp_time_window', 'absint');
     register_setting('abdp_settings_group', 'abdp_ban_threshold', 'absint');
     register_setting('abdp_settings_group', 'abdp_ban_duration', 'absint');
+    register_setting('abdp_settings_group', 'abdp_bot_max_requests', 'absint');
     register_setting('abdp_settings_group', 'abdp_excluded_bots', 'sanitize_textarea_field');
     register_setting('abdp_settings_group', 'abdp_bot_ip_ranges', 'sanitize_textarea_field');
     register_setting('abdp_settings_group', 'abdp_blocked_ips', array(
@@ -632,6 +678,9 @@ function abdp_register_settings() {
     ));
     register_setting('abdp_settings_group', 'abdp_banned_ips', array(
         'sanitize_callback' => 'abdp_sanitize_banned_ips',
+    ));
+    register_setting('abdp_settings_group', 'abdp_high_traffic_bots', array(
+        'sanitize_callback' => 'abdp_sanitize_high_traffic_bots',
     ));
 }
 
@@ -670,9 +719,30 @@ function abdp_sanitize_banned_ips($input) {
     return $sanitized;
 }
 
+// Sanitize high traffic bots
+function abdp_sanitize_high_traffic_bots($input) {
+    if (!is_array($input)) {
+        return array();
+    }
+    $sanitized = array();
+    foreach ($input as $entry) {
+        if (isset($entry['ip'], $entry['user_agent'], $entry['timestamp']) && filter_var($entry['ip'], FILTER_VALIDATE_IP) && is_string($entry['user_agent']) && is_numeric($entry['timestamp'])) {
+            $sanitized[] = array(
+                'ip' => $entry['ip'],
+                'user_agent' => sanitize_text_field($entry['user_agent']),
+                'timestamp' => absint($entry['timestamp']),
+            );
+        }
+    }
+    return $sanitized;
+}
+
 // Rate limiting logic
 add_action('init', 'abdp_rate_limit', 1);
 function abdp_rate_limit() {
+    // Ensure Greece timezone is set for all operations
+    date_default_timezone_set('Europe/Athens');
+
     // Skip rate limiting for admin, AJAX, CRON, REST API, static assets, or non-subscriber logged-in users
     if (is_admin() || 
         (defined('DOING_AJAX') && DOING_AJAX) || 
@@ -692,7 +762,29 @@ function abdp_rate_limit() {
 
     // Check if the user agent is an excluded bot with verified IP
     if (abdp_is_excluded_bot() && !abdp_is_suspicious_bot($ip, $user_agent)) {
-        return; // Skip rate limiting for verified bots
+        // Rate limiting for verified excluded bots
+        $bot_transient_key = 'abdp_bot_' . md5($ip);
+        $bot_request_count = get_transient($bot_transient_key);
+        $bot_max_requests = get_option('abdp_bot_max_requests', 100);
+        $bot_time_window = 60; // Fixed to 1 minute for bots
+
+        if ($bot_request_count === false) {
+            set_transient($bot_transient_key, 1, $bot_time_window);
+        } else {
+            if ($bot_request_count >= $bot_max_requests) {
+                // Log high traffic bot
+                $high_traffic_bots = get_option('abdp_high_traffic_bots', array());
+                $high_traffic_bots[] = array(
+                    'ip' => $ip,
+                    'user_agent' => $user_agent,
+                    'timestamp' => time(),
+                );
+                update_option('abdp_high_traffic_bots', $high_traffic_bots);
+            } else {
+                set_transient($bot_transient_key, $bot_request_count + 1, $bot_time_window);
+            }
+        }
+        return; // Skip regular rate limiting for verified bots
     }
 
     // Log suspicious bot to blocked IPs log
@@ -798,6 +890,7 @@ function abdp_deactivate() {
     delete_option('abdp_blocked_ips');
     delete_option('abdp_banned_ips');
     delete_option('abdp_bot_ip_ranges');
+    delete_option('abdp_high_traffic_bots');
 
     // Flush transients using WP functions (covers object cache)
     wp_cache_flush(); // Clears all object cache, including transients

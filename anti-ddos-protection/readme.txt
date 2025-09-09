@@ -6,51 +6,59 @@ Plugin URI: https://github.com/sourcecode347/anti-browser-ddos-protection
 Tags: security, ddos-protection, rate-limiting, ip-blocking, cloudflare, bot-detection
 Requires at least: 5.0
 Tested up to: 6.8
-Stable tag: 2.14
+Stable tag: 2.15
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Protect your WordPress site from DDoS attacks with advanced rate limiting, bot detection, automatic duplicate IP range removal, static asset exclusion, IP banning, and Cloudflare optimization.
+Protect your WordPress site from DDoS attacks with advanced rate limiting, bot detection, high traffic bot logging, automatic duplicate IP range removal, static asset exclusion, IP banning, and Cloudflare optimization.
 
 == Description ==
-The **Anti Browser DDoS Protection** plugin provides robust protection against denial-of-service (DoS) attacks on your WordPress site. It implements IP-based rate limiting, with configurable settings for subscribers and non-logged-in users, while excluding administrators and other non-subscriber roles. The plugin features advanced bot detection to identify and limit suspicious bots, supports Cloudflare for accurate client IP detection, and excludes static assets (e.g., CSS, JS, images) to maintain site performance. An intuitive admin panel allows you to configure rate limits, bot exclusions, trusted bot IP ranges (with automatic duplicate removal), and view logs for blocked and banned IPs.
+The **Anti Browser DDoS Protection** plugin provides robust protection against denial-of-service (DoS) attacks on your WordPress site. It implements IP-based rate limiting, with configurable settings for subscribers, non-logged-in users, and verified bots, while excluding administrators and other non-subscriber roles. The plugin features advanced bot detection to identify and limit suspicious bots, supports Cloudflare for accurate client IP detection, and excludes static assets (e.g., CSS, JS, images) to maintain site performance. An intuitive admin panel allows you to configure rate limits, bot exclusions, trusted bot IP ranges (with automatic duplicate removal), high traffic bot logging, and view logs for blocked, banned, and high traffic bots.
 
 **Key Features:**
 - Rate limiting based on IP for subscribers and non-logged-in users, with configurable maximum requests and time window.
 - Excludes non-subscriber logged-in users (e.g., administrators, editors) from rate limiting.
 - Advanced bot detection to identify suspicious bots (bots using trusted User Agents but from unverified IPs).
 - Suspicious bots are subject to the same rate limiting as regular users and logged for monitoring.
-- Admin panel to configure maximum requests, time window, excluded bots, and trusted bot IP ranges (in CIDR format).
+- Configurable rate limiting for verified excluded bots (default: 100 requests per minute), with logging for bots exceeding this limit.
+- High Traffic Excluded Bots Log to track verified bots with excessive requests, including IP, User Agent, and timestamp.
+- Admin panel to configure maximum requests, time window, excluded bots, trusted bot IP ranges, and high traffic bot limits (in CIDR format).
 - Automatic removal of duplicate IP ranges in the **Bot IP Ranges** field on save, keeping the first occurrence.
 - Support for Cloudflare real IP detection using `CF-Connecting-IP` and `X-Forwarded-For` headers.
 - Excludes static assets (CSS, JS, images, fonts, etc.) from rate limiting to optimize performance.
-- Logs blocked and banned IPs with timestamps, viewable in the admin panel with options to clear logs.
-- Automatic cleanup of transients, blocked IPs, banned IPs, and bot IP ranges on plugin deactivation to prevent database bloat.
+- Logs blocked, banned, and high traffic bots with timestamps in Greece time (Europe/Athens), viewable in the admin panel with options to clear logs.
+- Automatic cleanup of transients, blocked IPs, banned IPs, high traffic bots, and bot IP ranges on plugin deactivation to prevent database bloat.
 
-Ideal for WordPress sites seeking enhanced security against automated attacks, with seamless integration for Cloudflare users and simplified bot IP range management.
+Ideal for WordPress sites seeking enhanced security against automated attacks, with seamless integration for Cloudflare users and advanced bot management.
 
 == Installation ==
 1. Upload the `anti-ddos-protection` folder to the `/wp-content/plugins/` directory, or install the plugin directly through the WordPress plugins screen.
 2. Activate the plugin through the 'Plugins' screen in WordPress.
 3. Navigate to **Settings > Anti DDoS** to configure the plugin settings:
-   - Set the **Maximum Requests** (e.g., 10 requests).
+   - Set the **Maximum Requests (Regular Users)** (e.g., 10 requests).
    - Set the **Time Window** in seconds (e.g., 60 seconds).
+   - Set the **Maximum Requests (Excluded Bots)** (e.g., 100 requests per minute).
    - Add **Excluded Bots** (User Agents, one per line, e.g., Googlebot, Bingbot).
    - Add **Bot IP Ranges** (trusted IP ranges in CIDR format, one per line, e.g., 66.249.64.0/19). Duplicates are automatically removed on save. Update every 6 months (next update: March 2026).
    - Set **Blocks Before Ban** (e.g., 30 blocks) and **Ban Duration** (e.g., 24 hours).
 4. Test the rate limiting by sending multiple requests (e.g., refreshing a page rapidly) using a subscriber account or non-logged-in IP to ensure blocking works.
 5. Test suspicious bot detection by sending requests with a bot User Agent (e.g., Googlebot) from an unverified IP.
-6. Check the **Blocked IPs Log** and **Banned IPs Log** sections in the admin panel to view logs and clear them if needed.
+6. Test high traffic bot logging by sending over 100 requests per minute from a verified bot IP (e.g., Googlebot from a trusted IP range).
+7. Check the **Blocked IPs Log**, **Banned IPs Log**, and **High Traffic Excluded Bots Log** sections in the admin panel to view logs and clear them if needed.
+8. Ensure the WordPress timezone (Settings > General > Timezone) is set to `Europe/Athens` for accurate timestamp display.
 
 == Frequently Asked Questions ==
 = Does this plugin work with Cloudflare? =
 Yes, the plugin supports Cloudflare by using the `CF-Connecting-IP` header to detect the real client IP, ensuring accurate rate limiting and logging.
 
 = Can I exclude specific bots from rate limiting? =
-Yes, you can add User Agents (e.g., Googlebot, Bingbot) in the **Excluded Bots** field in the admin panel. Bots from trusted IP ranges (configured in **Bot IP Ranges**) are exempt from rate limiting.
+Yes, you can add User Agents (e.g., Googlebot, Bingbot) in the **Excluded Bots** field in the admin panel. Bots from trusted IP ranges (configured in **Bot IP Ranges**) are exempt from regular rate limiting but are subject to a separate limit (default: 100 requests per minute).
 
 = How are suspicious bots handled? =
 Bots with trusted User Agents (e.g., Googlebot) but from unverified IPs are flagged as suspicious, logged in the Blocked IPs Log, and subjected to the same rate limiting as regular users (e.g., 10 requests per 60 seconds).
+
+= How are high traffic excluded bots handled? =
+Verified excluded bots (from trusted IP ranges) exceeding the configured limit (default: 100 requests per minute) are logged in the High Traffic Excluded Bots Log with their IP, User Agent, and timestamp. They are not blocked but monitored for high activity.
 
 = Can I manage trusted bot IP ranges? =
 Yes, you can configure trusted bot IP ranges in the **Bot IP Ranges** field in the admin panel (Settings > Anti DDoS). Enter ranges in CIDR format (e.g., 66.249.64.0/19), one per line. Duplicate ranges are automatically removed on save. Update every 6 months.
@@ -61,20 +69,27 @@ No, the plugin excludes common static assets (e.g., .css, .js, .jpg, .png) to pr
 = Are logged-in users rate-limited? =
 Only users with the `subscriber` role are rate-limited. Administrators, editors, and other non-subscriber roles are exempt.
 
-= How do I view blocked or banned IPs? =
-Go to **Settings > Anti DDoS** to see the **Blocked IPs Log** and **Banned IPs Log** tables, which list IPs, timestamps, and ban expiration times. You can clear the logs using the provided buttons.
+= How do I view blocked, banned, or high traffic bot IPs? =
+Go to **Settings > Anti DDoS** to see the **Blocked IPs Log**, **Banned IPs Log**, and **High Traffic Excluded Bots Log** tables, which list IPs, User Agents (for high traffic bots), timestamps, and ban expiration times. You can clear the logs using the provided buttons.
 
 = What happens when I deactivate the plugin? =
-The plugin automatically deletes its transients, blocked IP logs, banned IP logs, and bot IP ranges from the database to prevent bloat.
+The plugin automatically deletes its transients, blocked IP logs, banned IP logs, high traffic bot logs, and bot IP ranges from the database to prevent bloat.
 
 == Screenshots ==
-1. Admin panel under **Settings > Anti DDoS**, showing configuration options for Maximum Requests, Time Window, Excluded Bots, Bot IP Ranges, Blocks Before Ban, and Ban Duration.
+1. Admin panel under **Settings > Anti DDoS**, showing configuration options for Maximum Requests (Regular Users), Time Window, Maximum Requests (Excluded Bots), Excluded Bots, Bot IP Ranges, Blocks Before Ban, and Ban Duration.
 2. Blocked IPs Log table, displaying IPs and timestamps with a Clear button.
 3. Banned IPs Log table, showing IPs, ban timestamps, and expiration times with a Clear button.
-4. Example of the "Too many requests" error page when an IP exceeds the rate limit.
-5. Example of the "Forbidden" error page when an IP is banned.
+4. High Traffic Excluded Bots Log table, showing IPs, User Agents, and timestamps with a Clear button.
+5. Example of the "Too many requests" error page when an IP exceeds the rate limit.
+6. Example of the "Forbidden" error page when an IP is banned.
 
 == Changelog ==
+= 2.15 =
+* Added configurable rate limiting for verified excluded bots (default: 100 requests per minute).
+* Added logging of high traffic excluded bots (exceeding the bot request limit) with IP, User Agent, and timestamp.
+* Added High Traffic Excluded Bots Log table in the admin panel with a Clear button.
+* Fixed timezone issue to ensure all timestamps reflect Greece time (Europe/Athens, UTC+3).
+
 = 2.14 =
 * Added automatic removal of duplicate IP ranges in the **Bot IP Ranges** field on save, keeping the first occurrence.
 * Updated admin panel description to note that duplicate IP ranges are automatically removed.
@@ -130,6 +145,9 @@ The plugin automatically deletes its transients, blocked IP logs, banned IP logs
 * Initial release with basic rate limiting functionality.
 
 == Upgrade Notice ==
+= 2.15 =
+This version adds configurable rate limiting for verified excluded bots, logs high traffic bots with IP, User Agent, and timestamp, and fixes timezone issues for accurate Greece time (Europe/Athens). Update to monitor high traffic bot activity and ensure correct timestamps.
+
 = 2.14 =
 This version adds automatic removal of duplicate IP ranges in the **Bot IP Ranges** field, simplifying IP range management. Update to ensure duplicate ranges are automatically handled on save.
 
@@ -157,5 +175,7 @@ This version adds blocked IP logging and a clear option in the admin panel. Upda
 == Other Notes ==
 - **Cloudflare Compatibility**: Ensure Cloudflare is configured to pass `CF-Connecting-IP` headers for accurate IP detection. Check your Cloudflare dashboard if logged IPs are incorrect.
 - **Bot IP Ranges**: Update the **Bot IP Ranges** field every 6 months (next update: March 2026) using official sources (e.g., Google, Bing, Yandex documentation). Duplicate ranges are automatically removed on save.
-- **Performance**: For high-traffic sites, clear the Blocked IPs Log and Banned IPs Log regularly to prevent database growth.
-- **Customization**: Contact the author for additional features like custom error pages, email notifications for suspicious bots, or advanced logging.
+- **High Traffic Bots**: Verified bots exceeding the configured limit (default: 100 requests per minute) are logged for monitoring but not blocked. Check the High Traffic Excluded Bots Log regularly.
+- **Timezone**: Set the WordPress timezone to `Europe/Athens` (Settings > General > Timezone) for accurate timestamp display in logs.
+- **Performance**: For high-traffic sites, clear the Blocked IPs Log, Banned IPs Log, and High Traffic Excluded Bots Log regularly to prevent database growth.
+- **Customization**: Contact the author for additional features like custom error pages, email notifications for high traffic bots, or advanced logging.
