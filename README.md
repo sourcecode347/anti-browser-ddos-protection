@@ -2,15 +2,23 @@
 Protect your WordPress site from DDoS attacks with advanced rate limiting, bot detection, automatic duplicate IP range removal, static asset exclusion, IP banning, and Cloudflare optimization.
 
 === Anti Browser DDoS Protection ===
+
 Author: SourceCode347
+
 Contributors: xAI
+
 Plugin Name: Anti Browser DDoS Protection
-Plugin URI: https://example.com/anti-ddos-protection
+
 Tags: security, ddos-protection, rate-limiting, ip-blocking, cloudflare, bot-detection
+
 Requires at least: 5.0
+
 Tested up to: 6.8
+
 Stable tag: 2.14
+
 License: GPLv2 or later
+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 Protect your WordPress site from DDoS attacks with advanced rate limiting, bot detection, automatic duplicate IP range removal, static asset exclusion, IP banning, and Cloudflare optimization.
