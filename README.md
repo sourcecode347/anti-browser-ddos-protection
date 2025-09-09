@@ -2,23 +2,35 @@
 Protect your WordPress site from DDoS attacks with advanced rate limiting, bot detection, automatic duplicate IP range removal, static asset exclusion, IP banning, and Cloudflare optimization.
 
 === Anti Browser DDoS Protection ===
+
 Author: SourceCode347
+
 Contributors: xAI
+
 Plugin Name: Anti Browser DDoS Protection
+
 Plugin URI: https://github.com/sourcecode347/anti-browser-ddos-protection
+
 Tags: security, ddos-protection, rate-limiting, ip-blocking, cloudflare, bot-detection
+
 Requires at least: 5.0
+
 Tested up to: 6.8
+
 Stable tag: 2.15
+
 License: GPLv2 or later
+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 Protect your WordPress site from DDoS attacks with advanced rate limiting, bot detection, high traffic bot logging, automatic duplicate IP range removal, static asset exclusion, IP banning, and Cloudflare optimization.
 
 == Description ==
+
 The **Anti Browser DDoS Protection** plugin provides robust protection against denial-of-service (DoS) attacks on your WordPress site. It implements IP-based rate limiting, with configurable settings for subscribers, non-logged-in users, and verified bots, while excluding administrators and other non-subscriber roles. The plugin features advanced bot detection to identify and limit suspicious bots, supports Cloudflare for accurate client IP detection, and excludes static assets (e.g., CSS, JS, images) to maintain site performance. An intuitive admin panel allows you to configure rate limits, bot exclusions, trusted bot IP ranges (with automatic duplicate removal), high traffic bot logging, and view logs for blocked, banned, and high traffic bots.
 
 **Key Features:**
+
 - Rate limiting based on IP for subscribers and non-logged-in users, with configurable maximum requests and time window.
 - Excludes non-subscriber logged-in users (e.g., administrators, editors) from rate limiting.
 - Advanced bot detection to identify suspicious bots (bots using trusted User Agents but from unverified IPs).
@@ -35,6 +47,7 @@ The **Anti Browser DDoS Protection** plugin provides robust protection against d
 Ideal for WordPress sites seeking enhanced security against automated attacks, with seamless integration for Cloudflare users and advanced bot management.
 
 == Installation ==
+
 1. Upload the `anti-ddos-protection` folder to the `/wp-content/plugins/` directory, or install the plugin directly through the WordPress plugins screen.
 2. Activate the plugin through the 'Plugins' screen in WordPress.
 3. Navigate to **Settings > Anti DDoS** to configure the plugin settings:
@@ -51,6 +64,7 @@ Ideal for WordPress sites seeking enhanced security against automated attacks, w
 8. Ensure the WordPress timezone (Settings > General > Timezone) is set to `Europe/Athens` for accurate timestamp display.
 
 == Frequently Asked Questions ==
+
 = Does this plugin work with Cloudflare? =
 Yes, the plugin supports Cloudflare by using the `CF-Connecting-IP` header to detect the real client IP, ensuring accurate rate limiting and logging.
 
@@ -79,6 +93,7 @@ Go to **Settings > Anti DDoS** to see the **Blocked IPs Log**, **Banned IPs Log*
 The plugin automatically deletes its transients, blocked IP logs, banned IP logs, high traffic bot logs, and bot IP ranges from the database to prevent bloat.
 
 == Screenshots ==
+
 1. Admin panel under **Settings > Anti DDoS**, showing configuration options for Maximum Requests (Regular Users), Time Window, Maximum Requests (Excluded Bots), Excluded Bots, Bot IP Ranges, Blocks Before Ban, and Ban Duration.
 2. Blocked IPs Log table, displaying IPs and timestamps with a Clear button.
 3. Banned IPs Log table, showing IPs, ban timestamps, and expiration times with a Clear button.
@@ -87,6 +102,7 @@ The plugin automatically deletes its transients, blocked IP logs, banned IP logs
 6. Example of the "Forbidden" error page when an IP is banned.
 
 == Changelog ==
+
 = 2.15 =
 * Added configurable rate limiting for verified excluded bots (default: 100 requests per minute).
 * Added logging of high traffic excluded bots (exceeding the bot request limit) with IP, User Agent, and timestamp.
