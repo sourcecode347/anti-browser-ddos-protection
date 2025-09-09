@@ -87,6 +87,7 @@ The plugin automatically deletes its transients, blocked IP logs, banned IP logs
 5. Example of the "Forbidden" error page when an IP is banned.
 
 == Changelog ==
+
 = 2.14 =
 * Added automatic removal of duplicate IP ranges in the **Bot IP Ranges** field on save, keeping the first occurrence.
 * Updated admin panel description to note that duplicate IP ranges are automatically removed.
