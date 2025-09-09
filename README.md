@@ -55,6 +55,7 @@ Ideal for WordPress sites seeking enhanced security against automated attacks, w
 6. Check the **Blocked IPs Log** and **Banned IPs Log** sections in the admin panel to view logs and clear them if needed.
 
 == Frequently Asked Questions ==
+
 = Does this plugin work with Cloudflare? =
 Yes, the plugin supports Cloudflare by using the `CF-Connecting-IP` header to detect the real client IP, ensuring accurate rate limiting and logging.
 
