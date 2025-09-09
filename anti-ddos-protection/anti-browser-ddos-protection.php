@@ -1,8 +1,8 @@
 <?php
 /*
 Plugin Name: Anti Browser DDoS Protection
-Description: Rate limiting with admin panel, bot exclusions, bot IP ranges management with duplicate removal, high traffic bot logging, static asset exclusion, blocked IP logging with User Agent, IP banning with User Agent, and Cloudflare real IP support.
-Version: 2.17
+Description: Rate limiting with admin panel, bot exclusions, bot IP ranges management with duplicate removal, high traffic bot logging, static asset exclusion, blocked IP logging with User Agent, IP banning with User Agent, Cloudflare real IP support, and blocked bots by User Agent.
+Version: 2.18
 Author: SourceCode347
 License: GPL v2 or later
 Text Domain: anti-browser-ddos-protection
@@ -77,6 +77,26 @@ function abdp_get_real_ip() {
     return $ip;
 }
 
+// Check if User Agent is a blocked bot
+function abdp_is_blocked_bot($user_agent) {
+    if (empty($user_agent)) {
+        return false;
+    }
+
+    $blocked_bots = get_option('abdp_blocked_bots', '');
+    if (empty($blocked_bots)) {
+        return false;
+    }
+
+    $bot_list = array_filter(array_map('trim', explode("\n", $blocked_bots)));
+    foreach ($bot_list as $bot) {
+        if (!empty($bot) && stripos($user_agent, $bot) !== false) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Check if IP belongs to known bot IP ranges
 function abdp_is_suspicious_bot($ip, $user_agent) {
     $excluded_bots = get_option('abdp_excluded_bots', '');
@@ -139,7 +159,7 @@ function abdp_admin_notice() {
     }
     printf(
         '<div class="notice notice-info is-dismissible"><p>%s <a href="%s">%s</a> %s</p></div>',
-        esc_html__('Anti DDoS Protection: Go to ', 'anti-browser-ddos-protection'),
+        esc_html__('Anti Browser DDoS Protection: Go to ', 'anti-browser-ddos-protection'),
         esc_url(admin_url('options-general.php?page=abdp-settings')),
         esc_html__('Settings > Anti DDoS', 'anti-browser-ddos-protection'),
         esc_html__('to configure the plugin.', 'anti-browser-ddos-protection')
@@ -168,32 +188,33 @@ function abdp_settings_page() {
         update_option('abdp_max_requests', absint($_POST['abdp_max_requests']));
         update_option('abdp_time_window', absint($_POST['abdp_time_window']));
         update_option('abdp_excluded_bots', sanitize_textarea_field($_POST['abdp_excluded_bots']));
+        update_option('abdp_blocked_bots', sanitize_textarea_field($_POST['abdp_blocked_bots']));
         update_option('abdp_bot_ip_ranges', $cleaned_bot_ip_ranges);
         update_option('abdp_ban_threshold', absint($_POST['abdp_ban_threshold']));
         update_option('abdp_ban_duration', absint($_POST['abdp_ban_duration']));
         update_option('abdp_bot_max_requests', absint($_POST['abdp_bot_max_requests']));
-        echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Settings saved successfully! Duplicate IP ranges have been removed.', 'anti-browser-ddos-protection') . '</p></div>';
+        echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Anti Browser DDoS Protection: Settings saved successfully! Duplicate IP ranges have been removed.', 'anti-browser-ddos-protection') . '</p></div>';
     }
 
     // Clear blocked IPs log
     if (isset($_POST['abdp_clear_blocked_log'])) {
         check_admin_referer('abdp_clear_blocked_log');
         delete_option('abdp_blocked_ips');
-        echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Blocked IPs log cleared successfully!', 'anti-browser-ddos-protection') . '</p></div>';
+        echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Anti Browser DDoS Protection: Blocked IPs log cleared successfully!', 'anti-browser-ddos-protection') . '</p></div>';
     }
 
     // Clear banned IPs log
     if (isset($_POST['abdp_clear_banned_log'])) {
         check_admin_referer('abdp_clear_banned_log');
         delete_option('abdp_banned_ips');
-        echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Banned IPs log cleared successfully!', 'anti-browser-ddos-protection') . '</p></div>';
+        echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Anti Browser DDoS Protection: Banned IPs log cleared successfully!', 'anti-browser-ddos-protection') . '</p></div>';
     }
 
     // Clear high traffic bots log
     if (isset($_POST['abdp_clear_high_traffic_bots_log'])) {
         check_admin_referer('abdp_clear_high_traffic_bots_log');
         delete_option('abdp_high_traffic_bots');
-        echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('High Traffic Bots log cleared successfully!', 'anti-browser-ddos-protection') . '</p></div>';
+        echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Anti Browser DDoS Protection: High Traffic Bots log cleared successfully!', 'anti-browser-ddos-protection') . '</p></div>';
     }
 
     $max_requests = get_option('abdp_max_requests', 10);
@@ -202,6 +223,7 @@ function abdp_settings_page() {
     $ban_duration = get_option('abdp_ban_duration', 24);
     $bot_max_requests = get_option('abdp_bot_max_requests', 100);
     $excluded_bots = get_option('abdp_excluded_bots', "Googlebot\nBingbot\nSlurp\nDuckDuckBot\nTwitterbot\nMediapartners-Google\nGoogle-Display-Ads-Bot\nAdsBot\nfacebookexternalhit\nAdsBot-Google\nAppEngine-Google\nFeedfetcher-Google\nYandex\nAhrefsBot\nmsnbot\nbingbot\nStripebot");
+    $blocked_bots = get_option('abdp_blocked_bots', "MJ12bot\nSemrushBot\nDotBot");
     $bot_ip_ranges = get_option('abdp_bot_ip_ranges', implode("\n", array(
         // Googlebot and related Google bots
         '66.249.64.0/19',
@@ -590,6 +612,13 @@ function abdp_settings_page() {
                         <p class="description"><?php echo esc_html__( 'One IP range per line in CIDR format (e.g., 66.249.64.0/19). Duplicate ranges are automatically removed on save. Last updated: September 2025, update every 6 months.', 'anti-browser-ddos-protection' ); ?></p>
                     </td>
                 </tr>
+                <tr>
+                    <th scope="row"><label for="abdp_blocked_bots"><?php echo esc_html__( 'Blocked Bots (User Agents)', 'anti-browser-ddos-protection' ); ?></label></th>
+                    <td>
+                        <textarea id="abdp_blocked_bots" name="abdp_blocked_bots" rows="5" cols="50" class="large-text code"><?php echo esc_textarea( $blocked_bots ); ?></textarea>
+                        <p class="description"><?php echo esc_html__( 'One user agent per line. These bots will be blocked immediately. Example: MJ12bot', 'anti-browser-ddos-protection' ); ?></p>
+                    </td>
+                </tr>
             </table>
             <?php submit_button( esc_html__( 'Save Settings', 'anti-browser-ddos-protection' ), 'primary', 'abdp_save_settings' ); ?>
         </form>
@@ -619,7 +648,7 @@ function abdp_settings_page() {
                 <?php submit_button( esc_html__( 'Clear Blocked IPs Log', 'anti-browser-ddos-protection' ), 'secondary', 'abdp_clear_blocked_log' ); ?>
             </form>
         <?php else : ?>
-            <p><?php echo esc_html__( 'No blocked IPs recorded yet.', 'anti-browser-ddos-protection' ); ?></p>
+            <p><?php echo esc_html__( 'Anti Browser DDoS Protection: No blocked IPs recorded yet.', 'anti-browser-ddos-protection' ); ?></p>
         <?php endif; ?>
 
         <h2><?php echo esc_html__( 'Banned IPs Log', 'anti-browser-ddos-protection' ); ?></h2>
@@ -649,7 +678,7 @@ function abdp_settings_page() {
                 <?php submit_button( esc_html__( 'Clear Banned IPs Log', 'anti-browser-ddos-protection' ), 'secondary', 'abdp_clear_banned_log' ); ?>
             </form>
         <?php else : ?>
-            <p><?php echo esc_html__( 'No banned IPs recorded yet.', 'anti-browser-ddos-protection' ); ?></p>
+            <p><?php echo esc_html__( 'Anti Browser DDoS Protection: No banned IPs recorded yet.', 'anti-browser-ddos-protection' ); ?></p>
         <?php endif; ?>
 
         <h2><?php echo esc_html__( 'High Traffic Excluded Bots Log', 'anti-browser-ddos-protection' ); ?></h2>
@@ -677,7 +706,7 @@ function abdp_settings_page() {
                 <?php submit_button( esc_html__( 'Clear High Traffic Bots Log', 'anti-browser-ddos-protection' ), 'secondary', 'abdp_clear_high_traffic_bots_log' ); ?>
             </form>
         <?php else : ?>
-            <p><?php echo esc_html__( 'No high traffic bots recorded yet.', 'anti-browser-ddos-protection' ); ?></p>
+            <p><?php echo esc_html__( 'Anti Browser DDoS Protection: No high traffic bots recorded yet.', 'anti-browser-ddos-protection' ); ?></p>
         <?php endif; ?>
     </div>
     <?php
@@ -692,6 +721,7 @@ function abdp_register_settings() {
     register_setting('abdp_settings_group', 'abdp_ban_duration', 'absint');
     register_setting('abdp_settings_group', 'abdp_bot_max_requests', 'absint');
     register_setting('abdp_settings_group', 'abdp_excluded_bots', 'sanitize_textarea_field');
+    register_setting('abdp_settings_group', 'abdp_blocked_bots', 'sanitize_textarea_field');
     register_setting('abdp_settings_group', 'abdp_bot_ip_ranges', 'sanitize_textarea_field');
     register_setting('abdp_settings_group', 'abdp_blocked_ips', array(
         'sanitize_callback' => 'abdp_sanitize_blocked_ips',
@@ -779,6 +809,18 @@ function abdp_rate_limit() {
 
     $user_agent = sanitize_text_field($_SERVER['HTTP_USER_AGENT'] ?? '');
 
+    // Check for blocked bots by User Agent
+    if (abdp_is_blocked_bot($user_agent)) {
+        $blocked_ips = get_option('abdp_blocked_ips', array());
+        $blocked_ips[] = array(
+            'ip' => $ip,
+            'user_agent' => $user_agent,
+            'timestamp' => time(),
+        );
+        update_option('abdp_blocked_ips', $blocked_ips);
+        wp_die( esc_html__( 'Anti Browser DDoS Protection: Blocked Bot Access Denied', 'anti-browser-ddos-protection' ), esc_html__( 'Forbidden', 'anti-browser-ddos-protection' ), array( 'response' => 403 ) );
+    }
+
     // Check if the user agent is an excluded bot with verified IP
     if (abdp_is_excluded_bot() && !abdp_is_suspicious_bot($ip, $user_agent)) {
         // Rate limiting for verified excluded bots
@@ -821,7 +863,7 @@ function abdp_rate_limit() {
     $banned_ips = get_option('abdp_banned_ips', array());
     foreach ($banned_ips as $entry) {
         if ($entry['ip'] === $ip && $entry['expires'] > time()) {
-            wp_die( esc_html__( 'Your IP is banned due to excessive requests.', 'anti-browser-ddos-protection' ), esc_html__( 'Forbidden', 'anti-browser-ddos-protection' ), array( 'response' => 403 ) );
+            wp_die( esc_html__( 'Anti Browser DDoS Protection: Your IP is banned due to excessive requests.', 'anti-browser-ddos-protection' ), esc_html__( 'Forbidden', 'anti-browser-ddos-protection' ), array( 'response' => 403 ) );
         }
     }
 
@@ -867,10 +909,10 @@ function abdp_rate_limit() {
                 update_option('abdp_banned_ips', $banned_ips);
                 // Clear block count transient
                 delete_transient($block_count_key);
-                wp_die( esc_html__( 'Your IP has been banned due to repeated excessive requests.', 'anti-browser-ddos-protection' ), esc_html__( 'Forbidden', 'anti-browser-ddos-protection' ), array( 'response' => 403 ) );
+                wp_die( esc_html__( 'Anti Browser DDoS Protection: Your IP has been banned due to repeated excessive requests.', 'anti-browser-ddos-protection' ), esc_html__( 'Forbidden', 'anti-browser-ddos-protection' ), array( 'response' => 403 ) );
             }
 
-            wp_die( esc_html__( 'Too many requests. Please slow down.', 'anti-browser-ddos-protection' ), esc_html__( 'Too Many Requests', 'anti-browser-ddos-protection' ), array( 'response' => 429, 'headers' => array( 'Retry-After' => absint( $time_window ) ) ) );
+            wp_die( esc_html__( 'Anti Browser DDoS Protection: Too many requests. Please slow down.', 'anti-browser-ddos-protection' ), esc_html__( 'Too Many Requests', 'anti-browser-ddos-protection' ), array( 'response' => 429, 'headers' => array( 'Retry-After' => absint( $time_window ) ) ) );
         } else {
             set_transient($transient_key, $request_count + 1, $time_window);
         }
@@ -911,6 +953,7 @@ function abdp_deactivate() {
     // Use WP API to delete options (no direct query needed)
     delete_option('abdp_blocked_ips');
     delete_option('abdp_banned_ips');
+    delete_option('abdp_blocked_bots');
     delete_option('abdp_bot_ip_ranges');
     delete_option('abdp_high_traffic_bots');
 
