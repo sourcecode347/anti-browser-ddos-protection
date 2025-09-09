@@ -144,6 +144,7 @@ The plugin automatically deletes its transients, blocked IP logs, banned IP logs
 * Initial release with basic rate limiting functionality.
 
 == Upgrade Notice ==
+
 = 2.14 =
 This version adds automatic removal of duplicate IP ranges in the **Bot IP Ranges** field, simplifying IP range management. Update to ensure duplicate ranges are automatically handled on save.
 
