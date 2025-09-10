@@ -1,8 +1,8 @@
 <?php
 /*
 Plugin Name: Anti Browser DDoS Protection
-Description: Rate limiting with admin panel, bot exclusions, bot IP ranges management with duplicate removal, high traffic bot logging, static asset exclusion, blocked IP logging with User Agent, IP banning with User Agent, Cloudflare real IP support, blocked bots by User Agent, auto-refresh logs every 30 seconds, and automatic log expiration.
-Version: 2.20
+Description: Rate limiting with admin panel, bot exclusions, bot IP ranges management with duplicate removal, high traffic bot logging, static asset exclusion, blocked IP logging with User Agent, IP banning with User Agent, Cloudflare real IP support, blocked bots by User Agent, auto-refresh logs every 30 seconds, automatic log expiration, and export/import for bot lists.
+Version: 2.21
 Author: SourceCode347
 License: GPL v2 or later
 Text Domain: anti-browser-ddos-protection
@@ -222,6 +222,43 @@ function abdp_enqueue_scripts($hook) {
     wp_enqueue_script('chart-js', 'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js', array(), null, true);
 }
 
+// Export handlers
+add_action('admin_post_abdp_export_excluded_bots', 'abdp_export_excluded_bots');
+function abdp_export_excluded_bots() {
+    if (!current_user_can('manage_options') || !wp_verify_nonce($_GET['nonce'] ?? '', 'abdp_export_excluded_bots')) {
+        wp_die('Unauthorized');
+    }
+    $data = get_option('abdp_excluded_bots', '');
+    header('Content-Type: text/plain');
+    header('Content-Disposition: attachment; filename="excluded_bots.txt"');
+    echo esc_html($data);
+    exit;
+}
+
+add_action('admin_post_abdp_export_bot_ip_ranges', 'abdp_export_bot_ip_ranges');
+function abdp_export_bot_ip_ranges() {
+    if (!current_user_can('manage_options') || !wp_verify_nonce($_GET['nonce'] ?? '', 'abdp_export_bot_ip_ranges')) {
+        wp_die('Unauthorized');
+    }
+    $data = get_option('abdp_bot_ip_ranges', '');
+    header('Content-Type: text/plain');
+    header('Content-Disposition: attachment; filename="bot_ip_ranges.txt"');
+    echo esc_html($data);
+    exit;
+}
+
+add_action('admin_post_abdp_export_blocked_bots', 'abdp_export_blocked_bots');
+function abdp_export_blocked_bots() {
+    if (!current_user_can('manage_options') || !wp_verify_nonce($_GET['nonce'] ?? '', 'abdp_export_blocked_bots')) {
+        wp_die('Unauthorized');
+    }
+    $data = get_option('abdp_blocked_bots', '');
+    header('Content-Type: text/plain');
+    header('Content-Disposition: attachment; filename="blocked_bots.txt"');
+    echo esc_html($data);
+    exit;
+}
+
 // Admin settings page
 function abdp_settings_page() {
     if (!current_user_can('manage_options')) {
@@ -231,6 +268,34 @@ function abdp_settings_page() {
     // Save settings
     if (isset($_POST['abdp_save_settings'])) {
         check_admin_referer('abdp_save_settings');
+
+        // Handle imports and append to POST values
+        // Excluded Bots Import
+        if (!empty($_FILES['abdp_excluded_bots_file']['name'])) {
+            $file_content = file_get_contents($_FILES['abdp_excluded_bots_file']['tmp_name']);
+            $new_lines = array_filter(array_map('trim', explode("\n", $file_content)));
+            $current_lines = array_filter(array_map('trim', explode("\n", $_POST['abdp_excluded_bots'])));
+            $all_lines = array_unique(array_merge($current_lines, $new_lines));
+            $_POST['abdp_excluded_bots'] = implode("\n", $all_lines);
+        }
+
+        // Bot IP Ranges Import
+        if (!empty($_FILES['abdp_bot_ip_ranges_file']['name'])) {
+            $file_content = file_get_contents($_FILES['abdp_bot_ip_ranges_file']['tmp_name']);
+            $new_lines = array_filter(array_map('trim', explode("\n", $file_content)));
+            $current_lines = array_filter(array_map('trim', explode("\n", $_POST['abdp_bot_ip_ranges'])));
+            $all_lines = array_unique(array_merge($current_lines, $new_lines));
+            $_POST['abdp_bot_ip_ranges'] = implode("\n", $all_lines);
+        }
+
+        // Blocked Bots Import
+        if (!empty($_FILES['abdp_blocked_bots_file']['name'])) {
+            $file_content = file_get_contents($_FILES['abdp_blocked_bots_file']['tmp_name']);
+            $new_lines = array_filter(array_map('trim', explode("\n", $file_content)));
+            $current_lines = array_filter(array_map('trim', explode("\n", $_POST['abdp_blocked_bots'])));
+            $all_lines = array_unique(array_merge($current_lines, $new_lines));
+            $_POST['abdp_blocked_bots'] = implode("\n", $all_lines);
+        }
 
         // Remove duplicate IP ranges
         $raw_bot_ip_ranges = sanitize_textarea_field($_POST['abdp_bot_ip_ranges']);
@@ -627,7 +692,7 @@ function abdp_settings_page() {
         <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
         
         <h2><?php echo esc_html__('Rate Limiting Settings', 'anti-browser-ddos-protection'); ?></h2>
-        <form method="post" action="">
+        <form method="post" action="" enctype="multipart/form-data">
             <?php wp_nonce_field('abdp_save_settings'); ?>
             <table class="form-table">
                 <tr>
@@ -677,6 +742,8 @@ function abdp_settings_page() {
                     <td>
                         <textarea id="abdp_excluded_bots" name="abdp_excluded_bots" rows="5" cols="50" class="large-text code"><?php echo esc_textarea($excluded_bots); ?></textarea>
                         <p class="description"><?php echo esc_html__('One user agent per line. These bots will be excluded from rate limiting if their IP is verified. Example: Googlebot', 'anti-browser-ddos-protection'); ?></p>
+                        <p><a href="<?php echo esc_url(admin_url('admin-post.php?action=abdp_export_excluded_bots&nonce=' . wp_create_nonce('abdp_export_excluded_bots'))); ?>"><?php echo esc_html__('Export to TXT', 'anti-browser-ddos-protection'); ?></a></p>
+                        <p><?php echo esc_html__('Import from TXT (append to existing):', 'anti-browser-ddos-protection'); ?> <input type="file" name="abdp_excluded_bots_file" accept=".txt"></p>
                     </td>
                 </tr>
                 <tr>
@@ -684,6 +751,8 @@ function abdp_settings_page() {
                     <td>
                         <textarea id="abdp_bot_ip_ranges" name="abdp_bot_ip_ranges" rows="10" cols="50" class="large-text code"><?php echo esc_textarea($bot_ip_ranges); ?></textarea>
                         <p class="description"><?php echo esc_html__('One IP range per line in CIDR format (e.g., 66.249.64.0/19). Verified IP Ranges for Excluded Bots.', 'anti-browser-ddos-protection'); ?></p>
+                        <p><a href="<?php echo esc_url(admin_url('admin-post.php?action=abdp_export_bot_ip_ranges&nonce=' . wp_create_nonce('abdp_export_bot_ip_ranges'))); ?>"><?php echo esc_html__('Export to TXT', 'anti-browser-ddos-protection'); ?></a></p>
+                        <p><?php echo esc_html__('Import from TXT (append to existing):', 'anti-browser-ddos-protection'); ?> <input type="file" name="abdp_bot_ip_ranges_file" accept=".txt"></p>
                     </td>
                 </tr>
                 <tr>
@@ -691,6 +760,8 @@ function abdp_settings_page() {
                     <td>
                         <textarea id="abdp_blocked_bots" name="abdp_blocked_bots" rows="5" cols="50" class="large-text code"><?php echo esc_textarea($blocked_bots); ?></textarea>
                         <p class="description"><?php echo esc_html__('One user agent per line. These bots will be blocked immediately. Example: MJ12bot', 'anti-browser-ddos-protection'); ?></p>
+                        <p><a href="<?php echo esc_url(admin_url('admin-post.php?action=abdp_export_blocked_bots&nonce=' . wp_create_nonce('abdp_export_blocked_bots'))); ?>"><?php echo esc_html__('Export to TXT', 'anti-browser-ddos-protection'); ?></a></p>
+                        <p><?php echo esc_html__('Import from TXT (append to existing):', 'anti-browser-ddos-protection'); ?> <input type="file" name="abdp_blocked_bots_file" accept=".txt"></p>
                     </td>
                 </tr>
             </table>
