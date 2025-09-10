@@ -4,16 +4,27 @@ Protects WordPress from DDoS with rate limiting, bot detection, blocking, Cloudf
 === Anti Browser DDoS Protection ===
 
 Author: SourceCode347
+
 Contributors: sourcecode347
+
 Plugin Name: Anti Browser DDoS Protection
+
 Plugin URI: https://github.com/sourcecode347/anti-browser-ddos-protection
+
 Donate link: https://buy.stripe.com/bIY5o70SSfam8Qo7ss
+
 Tags: security, ddos-protection, rate-limiting, ip-blocking, bot-blocking
+
 Requires at least: 5.0
+
 Tested up to: 6.8
+
 Stable tag: 2.21
+
 Requires PHP: 8.3
+
 License: GPLv2 or later
+
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 <img src="https://github.com/sourcecode347/anti-browser-ddos-protection/blob/main/Screenshot.png" style="width:100%;height:auto;"/>
