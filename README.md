@@ -33,8 +33,6 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 <img src="https://github.com/sourcecode347/anti-browser-ddos-protection/blob/main/Screenshot3.png" style="width:100%;height:auto;"/>
 
-Protects WordPress from DDoS with rate limiting, bot detection, blocking, Cloudflare support, logs, charts, and bot list export/import.
-
 == Description ==
 
 The **Anti Browser DDoS Protection** plugin provides robust protection against denial-of-service (DoS) attacks on your WordPress site. It implements IP-based rate limiting, with configurable settings for subscribers, non-logged-in users, and verified bots, while excluding administrators and other non-subscriber roles. It features advanced bot detection to identify and limit suspicious bots, immediate blocking of malicious bots by User Agent, and supports Cloudflare for accurate client IP detection. Static assets (e.g., CSS, JS, images) are excluded to maintain site performance. An intuitive admin panel allows you to configure rate limits, bot exclusions, trusted bot IP ranges (with automatic duplicate removal), blocked bots by User Agent, log expiration settings, and view logs for blocked IPs, banned IPs, and high traffic bots with auto-refresh every 30 seconds, all with User Agent details and timestamps. You can export **Excluded Bots**, **Bot IP Ranges**, and **Blocked Bots** lists to .txt files and import new entries to append to existing lists without duplicates. Daily bar charts for Blocked IPs, Banned IPs, and High Traffic Bots are displayed above the logs for quick visual insights.
@@ -95,7 +93,7 @@ Yes, the plugin supports Cloudflare by using the `CF-Connecting-IP` header to de
 Yes, you can add User Agents (e.g., Googlebot, Bingbot) in the **Excluded Bots** field in the admin panel. Bots from trusted IP ranges (configured in **Bot IP Ranges**) are exempt from regular rate limiting but are subject to a separate limit (default: 100 requests per minute). You can export the list to .txt or import from .txt to append new entries.
 
 = Can I block specific bots immediately? =
-Yes, you can add User Agents (e.g., MJ12bot, SemrushBot, DotBot) in the **Blocked Bots (User Agents)** field in the admin panel. These bots are blocked immediately, logged in the Blocked IPs Log with their User Agent, and receive an "Anti Browser DDoS Protection: Blocked Bot Access Denied" message. You can export the list to .txt or import from .txt to append new entries.
+Yes, you can add User Agents (e.g., MJ12bot, SemrushBot, DotBot) in the **Blocked Bots (User Agents)** field in the admin panel. These bots are blocked immediately, logged in the Blocked IPs Log with their User Agent, and receive an "Anti Browser DDoS Protection: Blocked Bot Access Denied" message. You can export the list to .txt or import from .txt to append new entries. If using WP Super Cache, ensure the same list is added to WP Super Cache > Advanced > Rejected User Agents to prevent bypassing.
 
 = How are suspicious bots handled? =
 Bots with trusted User Agents (e.g., Googlebot) but from unverified IPs are flagged as suspicious, logged in the Blocked IPs Log with their User Agent, and subjected to the same rate limiting as regular users (e.g., 10 requests per 60 seconds).
@@ -138,6 +136,8 @@ The plugin automatically deletes its transients, blocked IP logs, banned IP logs
 == Changelog ==
 
 = 2.21 =
+* Added plugin logo to the admin panel and plugin page for better branding.
+* Fixed an issue where an admin notice was displayed repeatedly on every admin panel refresh.
 * Added export functionality for **Excluded Bots**, **Bot IP Ranges**, and **Blocked Bots** lists to .txt files via links in the admin panel.
 * Added import functionality for **Excluded Bots**, **Bot IP Ranges**, and **Blocked Bots** lists from .txt files, appending new entries to existing lists with automatic duplicate removal.
 
@@ -224,10 +224,15 @@ The plugin automatically deletes its transients, blocked IP logs, banned IP logs
 = 1.0 =
 * Initial release with basic rate limiting functionality.
 
+== Bugs ==
+
+- When used in combination with WP Super Cache, the WP Super Cache plugin may bypass the **Blocked Bots** protection of Anti Browser DDoS Protection. This occurs because WP Super Cache serves cached pages without triggering the Anti Browser DDoS Protection checks for blocked User Agents.
+  - **Solution**: To ensure blocked bots are properly restricted, go to **WP Super Cache > Advanced > Rejected User Agents** and add the same list of User Agents configured in the **Blocked Bots (User Agents)** field of Anti Browser DDoS Protection (e.g., MJ12bot, SemrushBot, DotBot). This synchronizes the blocked bots list between both plugins, preventing WP Super Cache from serving cached pages to blocked bots.
+
 == Upgrade Notice ==
 
 = 2.21 =
-This version adds export and import functionality for **Excluded Bots**, **Bot IP Ranges**, and **Blocked Bots** lists, allowing you to back up lists to .txt files or append new entries from .txt files with automatic duplicate removal. Update to manage bot lists more efficiently.
+This version adds a plugin logo for better branding and fixes an admin notice that appeared on every admin panel refresh. It also includes export and import functionality for **Excluded Bots**, **Bot IP Ranges**, and **Blocked Bots** lists, allowing you to back up lists to .txt files or append new entries from .txt files with automatic duplicate removal. Update to improve branding, resolve the admin notice issue, and manage bot lists more efficiently.
 
 = 2.20 =
 This version adds daily bar charts for Blocked IPs, Banned IPs, and High Traffic Excluded Bots in the admin panel, along with a **Log Expires (Days)** setting for automatic cleanup of logs after a configurable number of days (default: 5 days), with hourly cleanup via WordPress Scheduler. Update to gain visual insights and manage log retention efficiently.
@@ -275,7 +280,7 @@ This version adds blocked IP logging and a clear option in the admin panel. Upda
 
 - **Cloudflare Compatibility**: Ensure Cloudflare is configured to pass `CF-Connecting-IP` headers for accurate IP detection. Check your Cloudflare dashboard if logged IPs are incorrect.
 - **Bot IP Ranges**: Update the **Bot IP Ranges** field every 6 months (next update: March 2026) using official sources (e.g., Google, Bing, Yandex documentation). Duplicate ranges are automatically removed on save. Export to .txt for backup or import from .txt to append new ranges.
-- **Blocked Bots**: Add malicious bots to the **Blocked Bots (User Agents)** field (e.g., MJ12bot, SemrushBot, DotBot) to block them immediately. Blocked bots are logged with their IP and User Agent. Export to .txt for backup or import from .txt to append new entries.
+- **Blocked Bots**: Add malicious bots to the **Blocked Bots (User Agents)** field (e.g., MJ12bot, SemrushBot, DotBot) to block them immediately. Blocked bots are logged with their IP and User Agent. If using WP Super Cache, ensure the same list is added to **WP Super Cache > Advanced > Rejected User Agents** to prevent bypassing. Export to .txt for backup or import from .txt to append new entries.
 - **Excluded Bots**: Add trusted bots (e.g., Googlebot, Bingbot) to the **Excluded Bots** field to exempt them from regular rate limiting (if from verified IPs). Export to .txt for backup or import from .txt to append new entries.
 - **High Traffic Bots**: Verified bots exceeding the configured limit (default: 100 requests per minute) are logged for monitoring but not blocked. Check the High Traffic Excluded Bots Log regularly.
 - **Log Expiration**: Set the **Log Expires (Days)** setting to control how long logs are retained (default: 5 days). Cleanup runs hourly via WordPress Scheduler. Logs older than the specified days are automatically deleted.
