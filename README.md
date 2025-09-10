@@ -1,41 +1,30 @@
 # anti-browser-ddos-protection
-Protect your WordPress site from DDoS attacks with advanced rate limiting, bot detection, automatic duplicate IP range removal, static asset exclusion, IP banning, and Cloudflare optimization.
+Protects WordPress from DDoS with rate limiting, bot detection, blocking, Cloudflare support, logs, charts, and bot list export/import.
 
 === Anti Browser DDoS Protection ===
 
 Author: SourceCode347
-
 Contributors: sourcecode347
-
 Plugin Name: Anti Browser DDoS Protection
-
 Plugin URI: https://github.com/sourcecode347/anti-browser-ddos-protection
-
 Donate link: https://buy.stripe.com/bIY5o70SSfam8Qo7ss
-
 Tags: security, ddos-protection, rate-limiting, ip-blocking, bot-blocking
-
 Requires at least: 5.0
-
 Tested up to: 6.8
-
-Stable tag: 2.20
-
+Stable tag: 2.21
 Requires PHP: 8.3
-
 License: GPLv2 or later
-
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 <img src="https://github.com/sourcecode347/anti-browser-ddos-protection/blob/main/Screenshot.png" style="width:100%;height:auto;"/>
 
 <img src="https://github.com/sourcecode347/anti-browser-ddos-protection/blob/main/Screenshot2.png" style="width:100%;height:auto;"/>
 
-Protects WordPress from DDoS with rate limiting, bot detection, blocking, Cloudflare support, log expiration, and daily statistics charts.
+Protects WordPress from DDoS with rate limiting, bot detection, blocking, Cloudflare support, logs, charts, and bot list export/import.
 
 == Description ==
 
-The **Anti Browser DDoS Protection** plugin provides robust protection against denial-of-service (DoS) attacks on your WordPress site. It implements IP-based rate limiting, with configurable settings for subscribers, non-logged-in users, and verified bots, while excluding administrators and other non-subscriber roles. It features advanced bot detection to identify and limit suspicious bots, immediate blocking of malicious bots by User Agent, and supports Cloudflare for accurate client IP detection. Static assets (e.g., CSS, JS, images) are excluded to maintain site performance. An intuitive admin panel allows you to configure rate limits, bot exclusions, trusted bot IP ranges (with automatic duplicate removal), blocked bots by User Agent, log expiration settings, and view logs for blocked IPs, banned IPs, and high traffic bots with auto-refresh every 30 seconds, all with User Agent details and timestamps. Additionally, daily bar charts for Blocked IPs, Banned IPs, and High Traffic Bots are displayed above the logs for quick visual insights.
+The **Anti Browser DDoS Protection** plugin provides robust protection against denial-of-service (DoS) attacks on your WordPress site. It implements IP-based rate limiting, with configurable settings for subscribers, non-logged-in users, and verified bots, while excluding administrators and other non-subscriber roles. It features advanced bot detection to identify and limit suspicious bots, immediate blocking of malicious bots by User Agent, and supports Cloudflare for accurate client IP detection. Static assets (e.g., CSS, JS, images) are excluded to maintain site performance. An intuitive admin panel allows you to configure rate limits, bot exclusions, trusted bot IP ranges (with automatic duplicate removal), blocked bots by User Agent, log expiration settings, and view logs for blocked IPs, banned IPs, and high traffic bots with auto-refresh every 30 seconds, all with User Agent details and timestamps. You can export **Excluded Bots**, **Bot IP Ranges**, and **Blocked Bots** lists to .txt files and import new entries to append to existing lists without duplicates. Daily bar charts for Blocked IPs, Banned IPs, and High Traffic Bots are displayed above the logs for quick visual insights.
 
 **Key Features:**
 
@@ -47,6 +36,8 @@ The **Anti Browser DDoS Protection** plugin provides robust protection against d
 - Configurable rate limiting for verified excluded bots (default: 100 requests per minute), with logging for bots exceeding this limit.
 - High Traffic Excluded Bots Log to track verified bots with excessive requests, including IP, User Agent, and timestamp.
 - Admin panel to configure maximum requests, time window, excluded bots, trusted bot IP ranges, blocked bots (User Agents), blocks before ban, ban duration, high traffic bot limits, and log expiration (days).
+- Export **Excluded Bots**, **Bot IP Ranges**, and **Blocked Bots** lists to .txt files for backup or transfer.
+- Import .txt files for **Excluded Bots**, **Bot IP Ranges**, and **Blocked Bots** to append new entries to existing lists, with automatic duplicate removal.
 - Automatic removal of duplicate IP ranges in the **Bot IP Ranges** field on save, keeping the first occurrence.
 - Support for Cloudflare real IP detection using `CF-Connecting-IP` and `X-Forwarded-For` headers.
 - Excludes static assets (CSS, JS, images, fonts, etc.) from rate limiting to optimize performance.
@@ -57,7 +48,7 @@ The **Anti Browser DDoS Protection** plugin provides robust protection against d
 - Donate link in the admin panel to support the project.
 - Automatic cleanup of transients, blocked IPs, banned IPs, high traffic bots, blocked bots, bot IP ranges, and log expiration settings on plugin deactivation to prevent database bloat.
 
-Ideal for WordPress sites seeking enhanced security against automated attacks, with seamless integration for Cloudflare users, advanced bot management, efficient log management, and visual charts for statistics.
+Ideal for WordPress sites seeking enhanced security against automated attacks, with seamless integration for Cloudflare users, advanced bot management, efficient log management, visual charts for statistics, and easy export/import for bot lists.
 
 == Installation ==
 
@@ -68,17 +59,19 @@ Ideal for WordPress sites seeking enhanced security against automated attacks, w
    - Set the **Time Window** in seconds (e.g., 60 seconds).
    - Set the **Maximum Requests (Excluded Bots)** (e.g., 100 requests per minute).
    - Set the **Log Expires (Days)** (e.g., 5 days) for automatic cleanup of logs.
-   - Add **Excluded Bots** (User Agents, one per line, e.g., Googlebot, Bingbot).
-   - Add **Bot IP Ranges** (trusted IP ranges in CIDR format, one per line, e.g., 66.249.64.0/19). Duplicates are automatically removed on save. Update every 6 months (next update: March 2026).
-   - Add **Blocked Bots (User Agents)** (e.g., MJ12bot, SemrushBot, DotBot) to block malicious bots immediately.
+   - Add **Excluded Bots** (User Agents, one per line, e.g., Googlebot, Bingbot). Export to .txt or import from .txt to append new entries (duplicates are removed).
+   - Add **Bot IP Ranges** (trusted IP ranges in CIDR format, one per line, e.g., 66.249.64.0/19). Export to .txt or import from .txt to append new entries (duplicates are removed). Update every 6 months (next update: March 2026).
+   - Add **Blocked Bots (User Agents)** (e.g., MJ12bot, SemrushBot, DotBot) to block malicious bots immediately. Export to .txt or import from .txt to append new entries (duplicates are removed).
    - Set **Blocks Before Ban** (e.g., 30 blocks) and **Ban Duration** (e.g., 24 hours).
 4. Test the rate limiting by sending multiple requests (e.g., refreshing a page rapidly) using a subscriber account or non-logged-in IP to ensure blocking works.
 5. Test suspicious bot detection by sending requests with a bot User Agent (e.g., Googlebot) from an unverified IP.
 6. Test blocked bot detection by sending requests with a blocked User Agent (e.g., MJ12bot) to verify immediate blocking and logging.
 7. Test high traffic bot logging by sending over 100 requests per minute from a verified bot IP (e.g., Googlebot from a trusted IP range).
-8. Test log expiration by setting **Log Expires (Days)** to a low value (e.g., 1 day), generating log entries, and checking if they are automatically removed after the specified time.
-9. Check the **Blocked IPs Log**, **Banned IPs Log**, and **High Traffic Excluded Bots Log** sections in the admin panel to view logs (including User Agent) with auto-refresh every 30 seconds and clear them if needed. Daily charts are displayed above the Blocked IPs Log for visual statistics.
-10. Ensure the WordPress timezone (Settings > General > Timezone) is set correctly (e.g., `Europe/Athens` for Greece) for accurate timestamp display.
+8. Test export functionality by clicking "Export to TXT" for **Excluded Bots**, **Bot IP Ranges**, and **Blocked Bots** to download .txt files.
+9. Test import functionality by uploading .txt files for **Excluded Bots**, **Bot IP Ranges**, and **Blocked Bots** to append new entries without duplicates.
+10. Test log expiration by setting **Log Expires (Days)** to a low value (e.g., 1 day), generating log entries, and checking if they are automatically removed after the specified time.
+11. Check the **Blocked IPs Log**, **Banned IPs Log**, and **High Traffic Excluded Bots Log** sections in the admin panel to view logs (including User Agent) with auto-refresh every 30 seconds and clear them if needed. Daily charts are displayed above the Blocked IPs Log for visual statistics.
+12. Ensure the WordPress timezone (Settings > General > Timezone) is set correctly (e.g., `Europe/Athens` for Greece) for accurate timestamp display.
 
 == Frequently Asked Questions ==
 
@@ -86,10 +79,10 @@ Ideal for WordPress sites seeking enhanced security against automated attacks, w
 Yes, the plugin supports Cloudflare by using the `CF-Connecting-IP` header to detect the real client IP, ensuring accurate rate limiting and logging.
 
 = Can I exclude specific bots from rate limiting? =
-Yes, you can add User Agents (e.g., Googlebot, Bingbot) in the **Excluded Bots** field in the admin panel. Bots from trusted IP ranges (configured in **Bot IP Ranges**) are exempt from regular rate limiting but are subject to a separate limit (default: 100 requests per minute).
+Yes, you can add User Agents (e.g., Googlebot, Bingbot) in the **Excluded Bots** field in the admin panel. Bots from trusted IP ranges (configured in **Bot IP Ranges**) are exempt from regular rate limiting but are subject to a separate limit (default: 100 requests per minute). You can export the list to .txt or import from .txt to append new entries.
 
 = Can I block specific bots immediately? =
-Yes, you can add User Agents (e.g., MJ12bot, SemrushBot, DotBot) in the **Blocked Bots (User Agents)** field in the admin panel. These bots are blocked immediately, logged in the Blocked IPs Log with their User Agent, and receive an "Anti Browser DDoS Protection: Blocked Bot Access Denied" message.
+Yes, you can add User Agents (e.g., MJ12bot, SemrushBot, DotBot) in the **Blocked Bots (User Agents)** field in the admin panel. These bots are blocked immediately, logged in the Blocked IPs Log with their User Agent, and receive an "Anti Browser DDoS Protection: Blocked Bot Access Denied" message. You can export the list to .txt or import from .txt to append new entries.
 
 = How are suspicious bots handled? =
 Bots with trusted User Agents (e.g., Googlebot) but from unverified IPs are flagged as suspicious, logged in the Blocked IPs Log with their User Agent, and subjected to the same rate limiting as regular users (e.g., 10 requests per 60 seconds).
@@ -98,7 +91,7 @@ Bots with trusted User Agents (e.g., Googlebot) but from unverified IPs are flag
 Verified excluded bots (from trusted IP ranges) exceeding the configured limit (default: 100 requests per minute) are logged in the High Traffic Excluded Bots Log with their IP, User Agent, and timestamp. They are not blocked but monitored for high activity.
 
 = Can I manage trusted bot IP ranges? =
-Yes, you can configure trusted bot IP ranges in the **Bot IP Ranges** field in the admin panel (Settings > Anti DDoS). Enter ranges in CIDR format (e.g., 66.249.64.0/19), one per line. Duplicate ranges are automatically removed on save. Update every 6 months.
+Yes, you can configure trusted bot IP ranges in the **Bot IP Ranges** field in the admin panel (Settings > Anti DDoS). Enter ranges in CIDR format (e.g., 66.249.64.0/19), one per line. Duplicate ranges are automatically removed on save. You can export the list to .txt or import from .txt to append new entries. Update every 6 months.
 
 = Are static assets like CSS and JS rate-limited? =
 No, the plugin excludes common static assets (e.g., .css, .js, .jpg, .png) to prevent performance issues.
@@ -112,12 +105,15 @@ Go to **Settings > Anti DDoS** to see the **Blocked IPs Log**, **Banned IPs Log*
 = How does log expiration work? =
 The **Log Expires (Days)** setting (default: 5 days) automatically deletes Blocked IPs, Banned IPs, and High Traffic Bots logs older than the specified number of days. Cleanup runs hourly via the WordPress Scheduler.
 
+= Can I export or import bot lists? =
+Yes, you can export **Excluded Bots**, **Bot IP Ranges**, and **Blocked Bots** lists to .txt files via links in the admin panel. You can also import .txt files to append new entries to these lists, with duplicates automatically removed on save.
+
 = What happens when I deactivate the plugin? =
 The plugin automatically deletes its transients, blocked IP logs, banned IP logs, high traffic bot logs, blocked bots, bot IP ranges, and log expiration settings from the database to prevent bloat.
 
 == Screenshots ==
 
-1. Admin panel under **Settings > Anti DDoS**, showing configuration options for Maximum Requests (Regular Users), Time Window, Maximum Requests (Excluded Bots), Log Expires (Days), Excluded Bots, Bot IP Ranges, Blocked Bots (User Agents), Blocks Before Ban, and Ban Duration, with a Donate link above the settings.
+1. Admin panel under **Settings > Anti DDoS**, showing configuration options for Maximum Requests (Regular Users), Time Window, Maximum Requests (Excluded Bots), Log Expires (Days), Excluded Bots, Bot IP Ranges, Blocked Bots (User Agents), Blocks Before Ban, and Ban Duration, with Export to TXT and Import from TXT options for bot lists, and a Donate link above the settings.
 2. Daily statistics charts for Blocked IPs, Banned IPs, and High Traffic Bots displayed above the logs in the admin panel.
 3. Blocked IPs Log table, displaying IPs, User Agents, and timestamps with auto-refresh every 30 seconds and a Clear button.
 4. Banned IPs Log table, showing IPs, User Agents, ban timestamps, and expiration times with auto-refresh every 30 seconds and a Clear button.
@@ -127,6 +123,10 @@ The plugin automatically deletes its transients, blocked IP logs, banned IP logs
 8. Example of the "Anti Browser DDoS Protection: Your IP is banned due to excessive requests." error page when an IP is banned.
 
 == Changelog ==
+
+= 2.21 =
+* Added export functionality for **Excluded Bots**, **Bot IP Ranges**, and **Blocked Bots** lists to .txt files via links in the admin panel.
+* Added import functionality for **Excluded Bots**, **Bot IP Ranges**, and **Blocked Bots** lists from .txt files, appending new entries to existing lists with automatic duplicate removal.
 
 = 2.20 =
 * Added daily bar charts for Blocked IPs, Banned IPs, and High Traffic Excluded Bots per day, displayed above the logs in the admin panel using Chart.js.
@@ -213,6 +213,9 @@ The plugin automatically deletes its transients, blocked IP logs, banned IP logs
 
 == Upgrade Notice ==
 
+= 2.21 =
+This version adds export and import functionality for **Excluded Bots**, **Bot IP Ranges**, and **Blocked Bots** lists, allowing you to back up lists to .txt files or append new entries from .txt files with automatic duplicate removal. Update to manage bot lists more efficiently.
+
 = 2.20 =
 This version adds daily bar charts for Blocked IPs, Banned IPs, and High Traffic Excluded Bots in the admin panel, along with a **Log Expires (Days)** setting for automatic cleanup of logs after a configurable number of days (default: 5 days), with hourly cleanup via WordPress Scheduler. Update to gain visual insights and manage log retention efficiently.
 
@@ -258,8 +261,9 @@ This version adds blocked IP logging and a clear option in the admin panel. Upda
 == Other Notes ==
 
 - **Cloudflare Compatibility**: Ensure Cloudflare is configured to pass `CF-Connecting-IP` headers for accurate IP detection. Check your Cloudflare dashboard if logged IPs are incorrect.
-- **Bot IP Ranges**: Update the **Bot IP Ranges** field every 6 months (next update: March 2026) using official sources (e.g., Google, Bing, Yandex documentation). Duplicate ranges are automatically removed on save.
-- **Blocked Bots**: Add malicious bots to the **Blocked Bots (User Agents)** field (e.g., MJ12bot, SemrushBot, DotBot) to block them immediately. Blocked bots are logged with their IP and User Agent.
+- **Bot IP Ranges**: Update the **Bot IP Ranges** field every 6 months (next update: March 2026) using official sources (e.g., Google, Bing, Yandex documentation). Duplicate ranges are automatically removed on save. Export to .txt for backup or import from .txt to append new ranges.
+- **Blocked Bots**: Add malicious bots to the **Blocked Bots (User Agents)** field (e.g., MJ12bot, SemrushBot, DotBot) to block them immediately. Blocked bots are logged with their IP and User Agent. Export to .txt for backup or import from .txt to append new entries.
+- **Excluded Bots**: Add trusted bots (e.g., Googlebot, Bingbot) to the **Excluded Bots** field to exempt them from regular rate limiting (if from verified IPs). Export to .txt for backup or import from .txt to append new entries.
 - **High Traffic Bots**: Verified bots exceeding the configured limit (default: 100 requests per minute) are logged for monitoring but not blocked. Check the High Traffic Excluded Bots Log regularly.
 - **Log Expiration**: Set the **Log Expires (Days)** setting to control how long logs are retained (default: 5 days). Cleanup runs hourly via WordPress Scheduler. Logs older than the specified days are automatically deleted.
 - **Timezone**: Set the WordPress timezone correctly (e.g., `Europe/Athens` for Greece) in Settings > General > Timezone to ensure accurate timestamp display in logs and charts.
