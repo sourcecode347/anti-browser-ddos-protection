@@ -1,0 +1,3 @@
+MJ12bot
+SemrushBot
+DotBot
