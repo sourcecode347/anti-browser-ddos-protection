@@ -1,8 +1,8 @@
 <?php
 /*
 Plugin Name: Anti Browser DDoS Protection
-Description: Rate limiting with admin panel, bot exclusions, bot IP ranges management with duplicate removal, high traffic bot logging, static asset exclusion, blocked IP logging with User Agent, IP banning with User Agent, Cloudflare real IP support, and blocked bots by User Agent.
-Version: 2.18
+Description: Rate limiting with admin panel, bot exclusions, bot IP ranges management with duplicate removal, high traffic bot logging, static asset exclusion, blocked IP logging with User Agent, IP banning with User Agent, Cloudflare real IP support, blocked bots by User Agent, auto-refresh logs every 30 seconds, and automatic log expiration.
+Version: 2.20
 Author: SourceCode347
 License: GPL v2 or later
 Text Domain: anti-browser-ddos-protection
@@ -166,6 +166,62 @@ function abdp_admin_notice() {
     );
 }
 
+// Clean up expired logs
+function abdp_cleanup_expired_logs() {
+    $log_expires_days = get_option('abdp_log_expires_days', 5);
+    $expiration_time = time() - ($log_expires_days * DAY_IN_SECONDS);
+
+    // Clean Blocked IPs
+    $blocked_ips = get_option('abdp_blocked_ips', array());
+    $blocked_ips = array_filter($blocked_ips, function($entry) use ($expiration_time) {
+        return $entry['timestamp'] >= $expiration_time;
+    });
+    update_option('abdp_blocked_ips', array_values($blocked_ips));
+
+    // Clean Banned IPs
+    $banned_ips = get_option('abdp_banned_ips', array());
+    $banned_ips = array_filter($banned_ips, function($entry) use ($expiration_time) {
+        return $entry['timestamp'] >= $expiration_time;
+    });
+    update_option('abdp_banned_ips', array_values($banned_ips));
+
+    // Clean High Traffic Bots
+    $high_traffic_bots = get_option('abdp_high_traffic_bots', array());
+    $high_traffic_bots = array_filter($high_traffic_bots, function($entry) use ($expiration_time) {
+        return $entry['timestamp'] >= $expiration_time;
+    });
+    update_option('abdp_high_traffic_bots', array_values($high_traffic_bots));
+}
+
+// Schedule log cleanup
+add_action('abdp_cleanup_logs_event', 'abdp_cleanup_expired_logs');
+function abdp_schedule_log_cleanup() {
+    if (!wp_next_scheduled('abdp_cleanup_logs_event')) {
+        wp_schedule_event(time(), 'hourly', 'abdp_cleanup_logs_event');
+    }
+}
+
+// Start the scheduler on plugin activation
+register_activation_hook(__FILE__, 'abdp_schedule_log_cleanup');
+
+// AJAX handler for refreshing nonce
+add_action('wp_ajax_abdp_refresh_nonce', 'abdp_refresh_nonce');
+function abdp_refresh_nonce() {
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Unauthorized', 403);
+    }
+    wp_send_json_success(wp_create_nonce('wp_rest'));
+}
+
+// Enqueue Chart.js on the settings page
+add_action('admin_enqueue_scripts', 'abdp_enqueue_scripts');
+function abdp_enqueue_scripts($hook) {
+    if ($hook !== 'settings_page_abdp-settings') {
+        return;
+    }
+    wp_enqueue_script('chart-js', 'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js', array(), null, true);
+}
+
 // Admin settings page
 function abdp_settings_page() {
     if (!current_user_can('manage_options')) {
@@ -179,9 +235,7 @@ function abdp_settings_page() {
         // Remove duplicate IP ranges
         $raw_bot_ip_ranges = sanitize_textarea_field($_POST['abdp_bot_ip_ranges']);
         $bot_ip_ranges_array = array_filter(array_map('trim', explode("\n", $raw_bot_ip_ranges)));
-        // Keep only unique IP ranges (first occurrence)
         $unique_bot_ip_ranges = array_unique($bot_ip_ranges_array);
-        // Reconstruct the string for storage
         $cleaned_bot_ip_ranges = implode("\n", $unique_bot_ip_ranges);
 
         // Save settings
@@ -193,6 +247,7 @@ function abdp_settings_page() {
         update_option('abdp_ban_threshold', absint($_POST['abdp_ban_threshold']));
         update_option('abdp_ban_duration', absint($_POST['abdp_ban_duration']));
         update_option('abdp_bot_max_requests', absint($_POST['abdp_bot_max_requests']));
+        update_option('abdp_log_expires_days', absint($_POST['abdp_log_expires_days']));
         echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Anti Browser DDoS Protection: Settings saved successfully! Duplicate IP ranges have been removed.', 'anti-browser-ddos-protection') . '</p></div>';
     }
 
@@ -222,6 +277,7 @@ function abdp_settings_page() {
     $ban_threshold = get_option('abdp_ban_threshold', 30);
     $ban_duration = get_option('abdp_ban_duration', 24);
     $bot_max_requests = get_option('abdp_bot_max_requests', 100);
+    $log_expires_days = get_option('abdp_log_expires_days', 5);
     $excluded_bots = get_option('abdp_excluded_bots', "Googlebot\nBingbot\nSlurp\nDuckDuckBot\nTwitterbot\nMediapartners-Google\nGoogle-Display-Ads-Bot\nAdsBot\nfacebookexternalhit\nAdsBot-Google\nAppEngine-Google\nFeedfetcher-Google\nYandex\nAhrefsBot\nmsnbot\nbingbot\nStripebot");
     $blocked_bots = get_option('abdp_blocked_bots', "MJ12bot\nSemrushBot\nDotBot");
     $bot_ip_ranges = get_option('abdp_bot_ip_ranges', implode("\n", array(
@@ -549,6 +605,17 @@ function abdp_settings_page() {
         .abdp-donate-link a:hover {
             text-decoration: underline;
         }
+        .abdp-charts-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+        .abdp-chart-wrapper {
+            width: 30%;
+            min-width: 300px;
+            margin-bottom: 20px;
+        }
     </style>
     <div class="wrap">
         <div class="abdp-donate-link">
@@ -557,159 +624,391 @@ function abdp_settings_page() {
                 '<a href="https://buy.stripe.com/bIY5o70SSfam8Qo7ss" target="_blank">' . esc_html__('Donate', 'anti-browser-ddos-protection') . '</a>'
             ); ?>
         </div>
-        <h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
+        <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
         
-        <h2><?php echo esc_html__( 'Rate Limiting Settings', 'anti-browser-ddos-protection' ); ?></h2>
+        <h2><?php echo esc_html__('Rate Limiting Settings', 'anti-browser-ddos-protection'); ?></h2>
         <form method="post" action="">
             <?php wp_nonce_field('abdp_save_settings'); ?>
             <table class="form-table">
                 <tr>
-                    <th scope="row"><label for="abdp_max_requests"><?php echo esc_html__( 'Maximum Requests (Regular Users)', 'anti-browser-ddos-protection' ); ?></label></th>
+                    <th scope="row"><label for="abdp_max_requests"><?php echo esc_html__('Maximum Requests (Regular Users)', 'anti-browser-ddos-protection'); ?></label></th>
                     <td>
-                        <input type="number" id="abdp_max_requests" name="abdp_max_requests" value="<?php echo esc_attr( $max_requests ); ?>" min="1" class="regular-text" required>
-                        <p class="description"><?php echo esc_html__( 'Maximum number of requests allowed per IP for regular users and suspicious bots.', 'anti-browser-ddos-protection' ); ?></p>
+                        <input type="number" id="abdp_max_requests" name="abdp_max_requests" value="<?php echo esc_attr($max_requests); ?>" min="1" class="regular-text" required>
+                        <p class="description"><?php echo esc_html__('Maximum number of requests allowed per IP for regular users and suspicious bots.', 'anti-browser-ddos-protection'); ?></p>
                     </td>
                 </tr>
                 <tr>
-                    <th scope="row"><label for="abdp_time_window"><?php echo esc_html__( 'Time Window (seconds)', 'anti-browser-ddos-protection' ); ?></label></th>
+                    <th scope="row"><label for="abdp_time_window"><?php echo esc_html__('Time Window (seconds)', 'anti-browser-ddos-protection'); ?></label></th>
                     <td>
-                        <input type="number" id="abdp_time_window" name="abdp_time_window" value="<?php echo esc_attr( $time_window ); ?>" min="1" class="regular-text" required>
-                        <p class="description"><?php echo esc_html__( 'Time window for request counting for regular users and suspicious bots (in seconds).', 'anti-browser-ddos-protection' ); ?></p>
+                        <input type="number" id="abdp_time_window" name="abdp_time_window" value="<?php echo esc_attr($time_window); ?>" min="1" class="regular-text" required>
+                        <p class="description"><?php echo esc_html__('Time window for request counting for regular users and suspicious bots (in seconds).', 'anti-browser-ddos-protection'); ?></p>
                     </td>
                 </tr>
                 <tr>
-                    <th scope="row"><label for="abdp_bot_max_requests"><?php echo esc_html__( 'Maximum Requests (Excluded Bots)', 'anti-browser-ddos-protection' ); ?></label></th>
+                    <th scope="row"><label for="abdp_bot_max_requests"><?php echo esc_html__('Maximum Requests (Excluded Bots)', 'anti-browser-ddos-protection'); ?></label></th>
                     <td>
-                        <input type="number" id="abdp_bot_max_requests" name="abdp_bot_max_requests" value="<?php echo esc_attr( $bot_max_requests ); ?>" min="1" class="regular-text" required>
-                        <p class="description"><?php echo esc_html__( 'Maximum number of requests allowed per minute for verified excluded bots. Bots exceeding this limit are logged as High Traffic Bots.', 'anti-browser-ddos-protection' ); ?></p>
+                        <input type="number" id="abdp_bot_max_requests" name="abdp_bot_max_requests" value="<?php echo esc_attr($bot_max_requests); ?>" min="1" class="regular-text" required>
+                        <p class="description"><?php echo esc_html__('Maximum number of requests allowed per minute for verified excluded bots. Bots exceeding this limit are logged as High Traffic Bots.', 'anti-browser-ddos-protection'); ?></p>
                     </td>
                 </tr>
                 <tr>
-                    <th scope="row"><label for="abdp_ban_threshold"><?php echo esc_html__( 'Blocks Before Ban', 'anti-browser-ddos-protection' ); ?></label></th>
+                    <th scope="row"><label for="abdp_ban_threshold"><?php echo esc_html__('Blocks Before Ban', 'anti-browser-ddos-protection'); ?></label></th>
                     <td>
-                        <input type="number" id="abdp_ban_threshold" name="abdp_ban_threshold" value="<?php echo esc_attr( $ban_threshold ); ?>" min="1" class="regular-text" required>
-                        <p class="description"><?php echo esc_html__( 'Number of blocks before an IP is banned.', 'anti-browser-ddos-protection' ); ?></p>
+                        <input type="number" id="abdp_ban_threshold" name="abdp_ban_threshold" value="<?php echo esc_attr($ban_threshold); ?>" min="1" class="regular-text" required>
+                        <p class="description"><?php echo esc_html__('Number of blocks before an IP is banned.', 'anti-browser-ddos-protection'); ?></p>
                     </td>
                 </tr>
                 <tr>
-                    <th scope="row"><label for="abdp_ban_duration"><?php echo esc_html__( 'Ban Duration (hours)', 'anti-browser-ddos-protection' ); ?></label></th>
+                    <th scope="row"><label for="abdp_ban_duration"><?php echo esc_html__('Ban Duration (hours)', 'anti-browser-ddos-protection'); ?></label></th>
                     <td>
-                        <input type="number" id="abdp_ban_duration" name="abdp_ban_duration" value="<?php echo esc_attr( $ban_duration ); ?>" min="1" class="regular-text" required>
-                        <p class="description"><?php echo esc_html__( 'Duration of the ban in hours.', 'anti-browser-ddos-protection' ); ?></p>
+                        <input type="number" id="abdp_ban_duration" name="abdp_ban_duration" value="<?php echo esc_attr($ban_duration); ?>" min="1" class="regular-text" required>
+                        <p class="description"><?php echo esc_html__('Duration of the ban in hours.', 'anti-browser-ddos-protection'); ?></p>
                     </td>
                 </tr>
                 <tr>
-                    <th scope="row"><label for="abdp_excluded_bots"><?php echo esc_html__( 'Excluded Bots (User Agents)', 'anti-browser-ddos-protection' ); ?></label></th>
+                    <th scope="row"><label for="abdp_log_expires_days"><?php echo esc_html__('Log Expires (Days)', 'anti-browser-ddos-protection'); ?></label></th>
                     <td>
-                        <textarea id="abdp_excluded_bots" name="abdp_excluded_bots" rows="5" cols="50" class="large-text code"><?php echo esc_textarea( $excluded_bots ); ?></textarea>
-                        <p class="description"><?php echo esc_html__( 'One user agent per line. These bots will be excluded from rate limiting if their IP is verified. Example: Googlebot', 'anti-browser-ddos-protection' ); ?></p>
+                        <input type="number" id="abdp_log_expires_days" name="abdp_log_expires_days" value="<?php echo esc_attr($log_expires_days); ?>" min="1" class="regular-text" required>
+                        <p class="description"><?php echo esc_html__('Number of days after which logs (Blocked IPs, Banned IPs, High Traffic Bots) are automatically deleted.', 'anti-browser-ddos-protection'); ?></p>
                     </td>
                 </tr>
                 <tr>
-                    <th scope="row"><label for="abdp_bot_ip_ranges"><?php echo esc_html__( 'Bot IP Ranges', 'anti-browser-ddos-protection' ); ?></label></th>
+                    <th scope="row"><label for="abdp_excluded_bots"><?php echo esc_html__('Excluded Bots (User Agents)', 'anti-browser-ddos-protection'); ?></label></th>
                     <td>
-                        <textarea id="abdp_bot_ip_ranges" name="abdp_bot_ip_ranges" rows="10" cols="50" class="large-text code"><?php echo esc_textarea( $bot_ip_ranges ); ?></textarea>
-                        <p class="description"><?php echo esc_html__( 'One IP range per line in CIDR format (e.g., 66.249.64.0/19). Duplicate ranges are automatically removed on save. Last updated: September 2025, update every 6 months.', 'anti-browser-ddos-protection' ); ?></p>
+                        <textarea id="abdp_excluded_bots" name="abdp_excluded_bots" rows="5" cols="50" class="large-text code"><?php echo esc_textarea($excluded_bots); ?></textarea>
+                        <p class="description"><?php echo esc_html__('One user agent per line. These bots will be excluded from rate limiting if their IP is verified. Example: Googlebot', 'anti-browser-ddos-protection'); ?></p>
                     </td>
                 </tr>
                 <tr>
-                    <th scope="row"><label for="abdp_blocked_bots"><?php echo esc_html__( 'Blocked Bots (User Agents)', 'anti-browser-ddos-protection' ); ?></label></th>
+                    <th scope="row"><label for="abdp_bot_ip_ranges"><?php echo esc_html__('Bot IP Ranges', 'anti-browser-ddos-protection'); ?></label></th>
                     <td>
-                        <textarea id="abdp_blocked_bots" name="abdp_blocked_bots" rows="5" cols="50" class="large-text code"><?php echo esc_textarea( $blocked_bots ); ?></textarea>
-                        <p class="description"><?php echo esc_html__( 'One user agent per line. These bots will be blocked immediately. Example: MJ12bot', 'anti-browser-ddos-protection' ); ?></p>
+                        <textarea id="abdp_bot_ip_ranges" name="abdp_bot_ip_ranges" rows="10" cols="50" class="large-text code"><?php echo esc_textarea($bot_ip_ranges); ?></textarea>
+                        <p class="description"><?php echo esc_html__('One IP range per line in CIDR format (e.g., 66.249.64.0/19). Verified IP Ranges for Excluded Bots.', 'anti-browser-ddos-protection'); ?></p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="abdp_blocked_bots"><?php echo esc_html__('Blocked Bots (User Agents)', 'anti-browser-ddos-protection'); ?></label></th>
+                    <td>
+                        <textarea id="abdp_blocked_bots" name="abdp_blocked_bots" rows="5" cols="50" class="large-text code"><?php echo esc_textarea($blocked_bots); ?></textarea>
+                        <p class="description"><?php echo esc_html__('One user agent per line. These bots will be blocked immediately. Example: MJ12bot', 'anti-browser-ddos-protection'); ?></p>
                     </td>
                 </tr>
             </table>
-            <?php submit_button( esc_html__( 'Save Settings', 'anti-browser-ddos-protection' ), 'primary', 'abdp_save_settings' ); ?>
+            <?php submit_button(esc_html__('Save Settings', 'anti-browser-ddos-protection'), 'primary', 'abdp_save_settings'); ?>
         </form>
 
-        <h2><?php echo esc_html__( 'Blocked IPs Log', 'anti-browser-ddos-protection' ); ?></h2>
+        <h2><?php echo esc_html__('Daily Statistics Charts', 'anti-browser-ddos-protection'); ?></h2>
+        <div class="abdp-charts-container">
+            <div class="abdp-chart-wrapper">
+                <canvas id="blocked-ips-chart"></canvas>
+            </div>
+            <div class="abdp-chart-wrapper">
+                <canvas id="banned-ips-chart"></canvas>
+            </div>
+            <div class="abdp-chart-wrapper">
+                <canvas id="high-traffic-bots-chart"></canvas>
+            </div>
+        </div>
+
+        <h2><?php echo esc_html__('Blocked IPs Log', 'anti-browser-ddos-protection'); ?></h2>
         <?php if (!empty($blocked_ips)) : ?>
-            <table class="wp-list-table widefat fixed striped">
+            <table id="abdp-blocked-ips-table" class="wp-list-table widefat fixed striped">
                 <thead>
                     <tr>
-                        <th><?php echo esc_html__( 'IP Address', 'anti-browser-ddos-protection' ); ?></th>
-                        <th><?php echo esc_html__( 'User Agent', 'anti-browser-ddos-protection' ); ?></th>
-                        <th><?php echo esc_html__( 'Timestamp', 'anti-browser-ddos-protection' ); ?></th>
+                        <th><?php echo esc_html__('IP Address', 'anti-browser-ddos-protection'); ?></th>
+                        <th><?php echo esc_html__('User Agent', 'anti-browser-ddos-protection'); ?></th>
+                        <th><?php echo esc_html__('Timestamp', 'anti-browser-ddos-protection'); ?></th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($blocked_ips as $entry) : ?>
                         <tr>
-                            <td><?php echo esc_html( $entry['ip'] ); ?></td>
-                            <td><?php echo esc_html( $entry['user_agent'] ); ?></td>
-                            <td><?php echo esc_html( wp_date( 'Y-m-d H:i:s', $entry['timestamp'] ) ); ?></td>
+                            <td><?php echo esc_html($entry['ip']); ?></td>
+                            <td><?php echo esc_html($entry['user_agent']); ?></td>
+                            <td><?php echo esc_html(wp_date('Y-m-d H:i:s', $entry['timestamp'])); ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
             <form method="post" action="">
                 <?php wp_nonce_field('abdp_clear_blocked_log'); ?>
-                <?php submit_button( esc_html__( 'Clear Blocked IPs Log', 'anti-browser-ddos-protection' ), 'secondary', 'abdp_clear_blocked_log' ); ?>
+                <?php submit_button(esc_html__('Clear Blocked IPs Log', 'anti-browser-ddos-protection'), 'secondary', 'abdp_clear_blocked_log'); ?>
             </form>
         <?php else : ?>
-            <p><?php echo esc_html__( 'Anti Browser DDoS Protection: No blocked IPs recorded yet.', 'anti-browser-ddos-protection' ); ?></p>
+            <p><?php echo esc_html__('Anti Browser DDoS Protection: No blocked IPs recorded yet.', 'anti-browser-ddos-protection'); ?></p>
         <?php endif; ?>
 
-        <h2><?php echo esc_html__( 'Banned IPs Log', 'anti-browser-ddos-protection' ); ?></h2>
+        <h2><?php echo esc_html__('Banned IPs Log', 'anti-browser-ddos-protection'); ?></h2>
         <?php if (!empty($banned_ips)) : ?>
-            <table class="wp-list-table widefat fixed striped">
+            <table id="abdp-banned-ips-table" class="wp-list-table widefat fixed striped">
                 <thead>
                     <tr>
-                        <th><?php echo esc_html__( 'IP Address', 'anti-browser-ddos-protection' ); ?></th>
-                        <th><?php echo esc_html__( 'User Agent', 'anti-browser-ddos-protection' ); ?></th>
-                        <th><?php echo esc_html__( 'Timestamp', 'anti-browser-ddos-protection' ); ?></th>
-                        <th><?php echo esc_html__( 'Expires', 'anti-browser-ddos-protection' ); ?></th>
+                        <th><?php echo esc_html__('IP Address', 'anti-browser-ddos-protection'); ?></th>
+                        <th><?php echo esc_html__('User Agent', 'anti-browser-ddos-protection'); ?></th>
+                        <th><?php echo esc_html__('Timestamp', 'anti-browser-ddos-protection'); ?></th>
+                        <th><?php echo esc_html__('Expires', 'anti-browser-ddos-protection'); ?></th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($banned_ips as $entry) : ?>
                         <tr>
-                            <td><?php echo esc_html( $entry['ip'] ); ?></td>
-                            <td><?php echo esc_html( $entry['user_agent'] ); ?></td>
-                            <td><?php echo esc_html( wp_date( 'Y-m-d H:i:s', $entry['timestamp'] ) ); ?></td>
-                            <td><?php echo esc_html( wp_date( 'Y-m-d H:i:s', $entry['expires'] ) ); ?></td>
+                            <td><?php echo esc_html($entry['ip']); ?></td>
+                            <td><?php echo esc_html($entry['user_agent']); ?></td>
+                            <td><?php echo esc_html(wp_date('Y-m-d H:i:s', $entry['timestamp'])); ?></td>
+                            <td><?php echo esc_html(wp_date('Y-m-d H:i:s', $entry['expires'])); ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
             <form method="post" action="">
                 <?php wp_nonce_field('abdp_clear_banned_log'); ?>
-                <?php submit_button( esc_html__( 'Clear Banned IPs Log', 'anti-browser-ddos-protection' ), 'secondary', 'abdp_clear_banned_log' ); ?>
+                <?php submit_button(esc_html__('Clear Banned IPs Log', 'anti-browser-ddos-protection'), 'secondary', 'abdp_clear_banned_log'); ?>
             </form>
         <?php else : ?>
-            <p><?php echo esc_html__( 'Anti Browser DDoS Protection: No banned IPs recorded yet.', 'anti-browser-ddos-protection' ); ?></p>
+            <p><?php echo esc_html__('Anti Browser DDoS Protection: No banned IPs recorded yet.', 'anti-browser-ddos-protection'); ?></p>
         <?php endif; ?>
 
-        <h2><?php echo esc_html__( 'High Traffic Excluded Bots Log', 'anti-browser-ddos-protection' ); ?></h2>
+        <h2><?php echo esc_html__('High Traffic Excluded Bots Log', 'anti-browser-ddos-protection'); ?></h2>
         <?php if (!empty($high_traffic_bots)) : ?>
-            <table class="wp-list-table widefat fixed striped">
+            <table id="abdp-high-traffic-bots-table" class="wp-list-table widefat fixed striped">
                 <thead>
                     <tr>
-                        <th><?php echo esc_html__( 'IP Address', 'anti-browser-ddos-protection' ); ?></th>
-                        <th><?php echo esc_html__( 'User Agent', 'anti-browser-ddos-protection' ); ?></th>
-                        <th><?php echo esc_html__( 'Timestamp', 'anti-browser-ddos-protection' ); ?></th>
+                        <th><?php echo esc_html__('IP Address', 'anti-browser-ddos-protection'); ?></th>
+                        <th><?php echo esc_html__('User Agent', 'anti-browser-ddos-protection'); ?></th>
+                        <th><?php echo esc_html__('Timestamp', 'anti-browser-ddos-protection'); ?></th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($high_traffic_bots as $entry) : ?>
                         <tr>
-                            <td><?php echo esc_html( $entry['ip'] ); ?></td>
-                            <td><?php echo esc_html( $entry['user_agent'] ); ?></td>
-                            <td><?php echo esc_html( wp_date( 'Y-m-d H:i:s', $entry['timestamp'] ) ); ?></td>
+                            <td><?php echo esc_html($entry['ip']); ?></td>
+                            <td><?php echo esc_html($entry['user_agent']); ?></td>
+                            <td><?php echo esc_html(wp_date('Y-m-d H:i:s', $entry['timestamp'])); ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
             <form method="post" action="">
                 <?php wp_nonce_field('abdp_clear_high_traffic_bots_log'); ?>
-                <?php submit_button( esc_html__( 'Clear High Traffic Bots Log', 'anti-browser-ddos-protection' ), 'secondary', 'abdp_clear_high_traffic_bots_log' ); ?>
+                <?php submit_button(esc_html__('Clear High Traffic Bots Log', 'anti-browser-ddos-protection'), 'secondary', 'abdp_clear_high_traffic_bots_log'); ?>
             </form>
         <?php else : ?>
-            <p><?php echo esc_html__( 'Anti Browser DDoS Protection: No high traffic bots recorded yet.', 'anti-browser-ddos-protection' ); ?></p>
+            <p><?php echo esc_html__('Anti Browser DDoS Protection: No high traffic bots recorded yet.', 'anti-browser-ddos-protection'); ?></p>
         <?php endif; ?>
+
+        <script>
+            (function() {
+                const apiBase = '<?php echo esc_url_raw(rest_url('abdp/v1')); ?>';
+                let nonce = '<?php echo esc_js(wp_create_nonce('wp_rest')); ?>';
+
+                let blockedChart, bannedChart, highTrafficChart;
+
+                function fetchNonce() {
+                    return fetch('<?php echo esc_url_raw(admin_url('admin-ajax.php')); ?>?action=abdp_refresh_nonce', {
+                        headers: { 'X-WP-Nonce': nonce }
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Failed to refresh nonce: ' + response.statusText);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            nonce = data.data;
+                            return nonce;
+                        } else {
+                            throw new Error('Nonce refresh failed');
+                        }
+                    });
+                }
+
+                function processData(data) {
+                    let counts = {};
+                    data.forEach(entry => {
+                        let date = entry.timestamp.split(' ')[0];
+                        counts[date] = (counts[date] || 0) + 1;
+                    });
+                    let sortedDates = Object.keys(counts).sort();
+                    let labels = sortedDates;
+                    let values = sortedDates.map(d => counts[d]);
+                    return { labels, values };
+                }
+
+                function drawChart(ctx, labels, values, title, existingChart) {
+                    if (existingChart) {
+                        existingChart.destroy();
+                    }
+                    return new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: title,
+                                data: values,
+                                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                                borderColor: 'rgba(75, 192, 192, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: 'Count'
+                                    }
+                                },
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: 'Date'
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: true
+                                }
+                            }
+                        }
+                    });
+                }
+
+                function fetchLogs(endpoint, tableId, chartId, title) {
+                    fetch(apiBase + endpoint, {
+                        headers: { 'X-WP-Nonce': nonce }
+                    })
+                    .then(response => {
+                        if (response.status === 403) {
+                            return fetchNonce().then(() => {
+                                return fetch(apiBase + endpoint, {
+                                    headers: { 'X-WP-Nonce': nonce }
+                                });
+                            });
+                        }
+                        return response;
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        const tbody = document.querySelector(`#${tableId} tbody`);
+                        if (!tbody) return;
+                        tbody.innerHTML = ''; // Clear existing rows
+                        if (data.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="' + (endpoint === '/banned-ips' ? 4 : 3) + '"><?php echo esc_html__('No entries recorded yet.', 'anti-browser-ddos-protection'); ?></td></tr>';
+                        } else {
+                            data.forEach(entry => {
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                                    <td>${entry.ip}</td>
+                                    <td>${entry.user_agent}</td>
+                                    <td>${entry.timestamp}</td>
+                                    ${endpoint === '/banned-ips' ? `<td>${entry.expires}</td>` : ''}
+                                `;
+                                tbody.appendChild(row);
+                            });
+                        }
+
+                        // Draw chart
+                        const ctx = document.getElementById(chartId).getContext('2d');
+                        const { labels, values } = processData(data);
+                        if (chartId === 'blocked-ips-chart') {
+                            blockedChart = drawChart(ctx, labels, values, title, blockedChart);
+                        } else if (chartId === 'banned-ips-chart') {
+                            bannedChart = drawChart(ctx, labels, values, title, bannedChart);
+                        } else if (chartId === 'high-traffic-bots-chart') {
+                            highTrafficChart = drawChart(ctx, labels, values, title, highTrafficChart);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching logs:', error);
+                    });
+                }
+
+                function refreshLogs() {
+                    fetchLogs('/blocked-ips', 'abdp-blocked-ips-table', 'blocked-ips-chart', 'Blocked IPs per Day');
+                    fetchLogs('/banned-ips', 'abdp-banned-ips-table', 'banned-ips-chart', 'Banned IPs per Day');
+                    fetchLogs('/high-traffic-bots', 'abdp-high-traffic-bots-table', 'high-traffic-bots-chart', 'High Traffic Bots per Day');
+                }
+
+                // Initial fetch
+                refreshLogs();
+
+                // Refresh every 30 seconds
+                setInterval(refreshLogs, 30000);
+            })();
+        </script>
     </div>
     <?php
+}
+
+// Register REST API endpoints for logs
+add_action('rest_api_init', 'abdp_register_rest_endpoints');
+function abdp_register_rest_endpoints() {
+    // Endpoint for Blocked IPs
+    register_rest_route('abdp/v1', '/blocked-ips', array(
+        'methods' => 'GET',
+        'callback' => 'abdp_get_blocked_ips',
+        'permission_callback' => function() {
+            return current_user_can('manage_options');
+        },
+    ));
+
+    // Endpoint for Banned IPs
+    register_rest_route('abdp/v1', '/banned-ips', array(
+        'methods' => 'GET',
+        'callback' => 'abdp_get_banned_ips',
+        'permission_callback' => function() {
+            return current_user_can('manage_options');
+        },
+    ));
+
+    // Endpoint for High Traffic Bots
+    register_rest_route('abdp/v1', '/high-traffic-bots', array(
+        'methods' => 'GET',
+        'callback' => 'abdp_get_high_traffic_bots',
+        'permission_callback' => function() {
+            return current_user_can('manage_options');
+        },
+    ));
+}
+
+function abdp_get_blocked_ips($request) {
+    $blocked_ips = get_option('abdp_blocked_ips', array());
+    $formatted = array_map(function($entry) {
+        return array(
+            'ip' => esc_html($entry['ip']),
+            'user_agent' => esc_html($entry['user_agent']),
+            'timestamp' => esc_html(wp_date('Y-m-d H:i:s', $entry['timestamp'])),
+        );
+    }, $blocked_ips);
+    return rest_ensure_response($formatted);
+}
+
+function abdp_get_banned_ips($request) {
+    $banned_ips = get_option('abdp_banned_ips', array());
+    $formatted = array_map(function($entry) {
+        return array(
+            'ip' => esc_html($entry['ip']),
+            'user_agent' => esc_html($entry['user_agent']),
+            'timestamp' => esc_html(wp_date('Y-m-d H:i:s', $entry['timestamp'])),
+            'expires' => esc_html(wp_date('Y-m-d H:i:s', $entry['expires'])),
+        );
+    }, $banned_ips);
+    return rest_ensure_response($formatted);
+}
+
+function abdp_get_high_traffic_bots($request) {
+    $high_traffic_bots = get_option('abdp_high_traffic_bots', array());
+    $formatted = array_map(function($entry) {
+        return array(
+            'ip' => esc_html($entry['ip']),
+            'user_agent' => esc_html($entry['user_agent']),
+            'timestamp' => esc_html(wp_date('Y-m-d H:i:s', $entry['timestamp'])),
+        );
+    }, $high_traffic_bots);
+    return rest_ensure_response($formatted);
 }
 
 // Register settings
@@ -720,6 +1019,7 @@ function abdp_register_settings() {
     register_setting('abdp_settings_group', 'abdp_ban_threshold', 'absint');
     register_setting('abdp_settings_group', 'abdp_ban_duration', 'absint');
     register_setting('abdp_settings_group', 'abdp_bot_max_requests', 'absint');
+    register_setting('abdp_settings_group', 'abdp_log_expires_days', 'absint');
     register_setting('abdp_settings_group', 'abdp_excluded_bots', 'sanitize_textarea_field');
     register_setting('abdp_settings_group', 'abdp_blocked_bots', 'sanitize_textarea_field');
     register_setting('abdp_settings_group', 'abdp_bot_ip_ranges', 'sanitize_textarea_field');
@@ -789,28 +1089,29 @@ function abdp_sanitize_high_traffic_bots($input) {
     return $sanitized;
 }
 
-// Rate limiting logic
-add_action('init', 'abdp_rate_limit', 1);
-function abdp_rate_limit() {
-    // Skip rate limiting for admin, AJAX, CRON, REST API, static assets, or non-subscriber logged-in users
+// Early bot blocking logic to bypass caching
+add_action('plugins_loaded', 'abdp_block_bots_early', 1);
+function abdp_block_bots_early() {
+    // Skip if in admin, AJAX, CRON, or REST API to avoid interference
     if (is_admin() || 
         (defined('DOING_AJAX') && DOING_AJAX) || 
         (defined('DOING_CRON') && DOING_CRON) ||
-        (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], '/wp-json/') !== false) ||
-        abdp_is_static_request() ||
-        (is_user_logged_in() && !current_user_can('subscriber'))) {
+        (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], '/wp-json/') !== false)) {
         return;
     }
 
     $ip = abdp_get_real_ip();
     if (empty($ip)) {
+        error_log('ABDP Early: No valid IP detected');
         return;
     }
 
     $user_agent = sanitize_text_field($_SERVER['HTTP_USER_AGENT'] ?? '');
+    error_log('ABDP Early: Processing request. URI: ' . ($_SERVER['REQUEST_URI'] ?? 'unknown') . ', IP: ' . $ip . ', User Agent: ' . $user_agent);
 
     // Check for blocked bots by User Agent
     if (abdp_is_blocked_bot($user_agent)) {
+        error_log('ABDP Early: Blocked bot detected - IP: ' . $ip . ', User Agent: ' . $user_agent);
         $blocked_ips = get_option('abdp_blocked_ips', array());
         $blocked_ips[] = array(
             'ip' => $ip,
@@ -818,11 +1119,42 @@ function abdp_rate_limit() {
             'timestamp' => time(),
         );
         update_option('abdp_blocked_ips', $blocked_ips);
-        wp_die( esc_html__( 'Anti Browser DDoS Protection: Blocked Bot Access Denied', 'anti-browser-ddos-protection' ), esc_html__( 'Forbidden', 'anti-browser-ddos-protection' ), array( 'response' => 403 ) );
+        header('HTTP/1.1 403 Forbidden');
+        header('Content-Type: text/plain');
+        echo esc_html__('Anti Browser DDoS Protection: Blocked Bot Access Denied', 'anti-browser-ddos-protection');
+        exit;
+    }
+}
+
+// Rate limiting logic
+add_action('init', 'abdp_rate_limit', 1);
+function abdp_rate_limit() {
+    // Log the request details for debugging
+    error_log('ABDP: Processing request. URI: ' . ($_SERVER['REQUEST_URI'] ?? 'unknown') . ', IP: ' . ($_SERVER['REMOTE_ADDR'] ?? 'none') . ', Raw User Agent: ' . ($_SERVER['HTTP_USER_AGENT'] ?? 'none'));
+
+    $ip = abdp_get_real_ip();
+    if (empty($ip)) {
+        error_log('ABDP: No valid IP detected');
+        return;
+    }
+
+    $user_agent = sanitize_text_field($_SERVER['HTTP_USER_AGENT'] ?? '');
+    error_log('ABDP: Processing request for IP: ' . $ip . ', Sanitized User Agent: ' . $user_agent);
+
+    // Skip rate limiting for admin, AJAX, CRON, REST API, static assets, or non-subscriber logged-in users
+    if (is_admin() || 
+        (defined('DOING_AJAX') && DOING_AJAX) || 
+        (defined('DOING_CRON') && DOING_CRON) ||
+        (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], '/wp-json/') !== false) ||
+        abdp_is_static_request() ||
+        (is_user_logged_in() && !current_user_can('subscriber'))) {
+        error_log('ABDP: Rate limiting skipped for request: ' . ($_SERVER['REQUEST_URI'] ?? 'unknown') . ', User Agent: ' . $user_agent);
+        return;
     }
 
     // Check if the user agent is an excluded bot with verified IP
     if (abdp_is_excluded_bot() && !abdp_is_suspicious_bot($ip, $user_agent)) {
+        error_log('ABDP: Verified excluded bot - IP: ' . $ip . ', User Agent: ' . $user_agent);
         // Rate limiting for verified excluded bots
         $bot_transient_key = 'abdp_bot_' . md5($ip);
         $bot_request_count = get_transient($bot_transient_key);
@@ -834,6 +1166,7 @@ function abdp_rate_limit() {
         } else {
             if ($bot_request_count >= $bot_max_requests) {
                 // Log high traffic bot
+                error_log('ABDP: High traffic bot detected - IP: ' . $ip . ', User Agent: ' . $user_agent);
                 $high_traffic_bots = get_option('abdp_high_traffic_bots', array());
                 $high_traffic_bots[] = array(
                     'ip' => $ip,
@@ -850,6 +1183,7 @@ function abdp_rate_limit() {
 
     // Log suspicious bot to blocked IPs log
     if (abdp_is_suspicious_bot($ip, $user_agent)) {
+        error_log('ABDP: Suspicious bot detected - IP: ' . $ip . ', User Agent: ' . $user_agent);
         $blocked_ips = get_option('abdp_blocked_ips', array());
         $blocked_ips[] = array(
             'ip' => $ip,
@@ -863,7 +1197,11 @@ function abdp_rate_limit() {
     $banned_ips = get_option('abdp_banned_ips', array());
     foreach ($banned_ips as $entry) {
         if ($entry['ip'] === $ip && $entry['expires'] > time()) {
-            wp_die( esc_html__( 'Anti Browser DDoS Protection: Your IP is banned due to excessive requests.', 'anti-browser-ddos-protection' ), esc_html__( 'Forbidden', 'anti-browser-ddos-protection' ), array( 'response' => 403 ) );
+            error_log('ABDP: Banned IP detected - IP: ' . $ip . ', User Agent: ' . $user_agent);
+            header('HTTP/1.1 403 Forbidden');
+            header('Content-Type: text/plain');
+            echo esc_html__('Anti Browser DDoS Protection: Your IP is banned due to excessive requests.', 'anti-browser-ddos-protection');
+            exit;
         }
     }
 
@@ -877,6 +1215,7 @@ function abdp_rate_limit() {
     } else {
         if ($request_count >= $max_requests) {
             // Log blocked IP
+            error_log('ABDP: Rate limit exceeded - IP: ' . $ip . ', User Agent: ' . $user_agent);
             $blocked_ips = get_option('abdp_blocked_ips', array());
             $blocked_ips[] = array(
                 'ip' => $ip,
@@ -899,6 +1238,7 @@ function abdp_rate_limit() {
             $ban_threshold = get_option('abdp_ban_threshold', 30);
             $ban_duration = get_option('abdp_ban_duration', 24) * HOUR_IN_SECONDS;
             if ($block_count >= $ban_threshold) {
+                error_log('ABDP: Ban threshold reached - IP: ' . $ip . ', User Agent: ' . $user_agent);
                 $banned_ips = get_option('abdp_banned_ips', array());
                 $banned_ips[] = array(
                     'ip' => $ip,
@@ -909,10 +1249,17 @@ function abdp_rate_limit() {
                 update_option('abdp_banned_ips', $banned_ips);
                 // Clear block count transient
                 delete_transient($block_count_key);
-                wp_die( esc_html__( 'Anti Browser DDoS Protection: Your IP has been banned due to repeated excessive requests.', 'anti-browser-ddos-protection' ), esc_html__( 'Forbidden', 'anti-browser-ddos-protection' ), array( 'response' => 403 ) );
+                header('HTTP/1.1 403 Forbidden');
+                header('Content-Type: text/plain');
+                echo esc_html__('Anti Browser DDoS Protection: Your IP has been banned due to repeated excessive requests.', 'anti-browser-ddos-protection');
+                exit;
             }
 
-            wp_die( esc_html__( 'Anti Browser DDoS Protection: Too many requests. Please slow down.', 'anti-browser-ddos-protection' ), esc_html__( 'Too Many Requests', 'anti-browser-ddos-protection' ), array( 'response' => 429, 'headers' => array( 'Retry-After' => absint( $time_window ) ) ) );
+            header('HTTP/1.1 429 Too Many Requests');
+            header('Retry-After: ' . absint($time_window));
+            header('Content-Type: text/plain');
+            echo esc_html__('Anti Browser DDoS Protection: Too many requests. Please slow down.', 'anti-browser-ddos-protection');
+            exit;
         } else {
             set_transient($transient_key, $request_count + 1, $time_window);
         }
@@ -956,6 +1303,10 @@ function abdp_deactivate() {
     delete_option('abdp_blocked_bots');
     delete_option('abdp_bot_ip_ranges');
     delete_option('abdp_high_traffic_bots');
+    delete_option('abdp_log_expires_days');
+
+    // Clear scheduled log cleanup event
+    wp_clear_scheduled_hook('abdp_cleanup_logs_event');
 
     // Flush transients using WP functions (covers object cache)
     wp_cache_flush(); // Clears all object cache, including transients
