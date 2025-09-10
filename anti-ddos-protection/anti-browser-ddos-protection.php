@@ -143,27 +143,29 @@ function abdp_is_suspicious_bot($ip, $user_agent) {
 add_action('admin_menu', 'abdp_admin_menu');
 function abdp_admin_menu() {
     add_options_page(
-        esc_html__('Anti DDoS Settings', 'anti-browser-ddos-protection'),
+        esc_html__('Anti Browser DDoS Protection Settings', 'anti-browser-ddos-protection'),
         esc_html__('Anti DDoS', 'anti-browser-ddos-protection'),
         'manage_options',
         'abdp-settings',
         'abdp_settings_page'
     );
 }
-
+setcookie("abdp_admin_notice", "0", time() + (86400 * 30), "/", $_SERVER['SERVER_NAME']);
 // Admin notice to confirm menu registration
 add_action('admin_notices', 'abdp_admin_notice');
 function abdp_admin_notice() {
     if (!current_user_can('manage_options')) {
         return;
     }
-    printf(
-        '<div class="notice notice-info is-dismissible"><p>%s <a href="%s">%s</a> %s</p></div>',
-        esc_html__('Anti Browser DDoS Protection: Go to ', 'anti-browser-ddos-protection'),
-        esc_url(admin_url('options-general.php?page=abdp-settings')),
-        esc_html__('Settings > Anti DDoS', 'anti-browser-ddos-protection'),
-        esc_html__('to configure the plugin.', 'anti-browser-ddos-protection')
-    );
+    if(!isset($_COOKIE['abdp_admin_notice'])){
+        printf(
+            '<div class="notice notice-info is-dismissible"><p>%s <a href="%s">%s</a> %s</p></div>',
+            esc_html__('Anti Browser DDoS Protection: Go to ', 'anti-browser-ddos-protection'),
+            esc_url(admin_url('options-general.php?page=abdp-settings')),
+            esc_html__('Settings > Anti DDoS', 'anti-browser-ddos-protection'),
+            esc_html__('to configure the plugin.', 'anti-browser-ddos-protection')
+        );
+    }
 }
 
 // Clean up expired logs
@@ -670,6 +672,15 @@ function abdp_settings_page() {
         .abdp-donate-link a:hover {
             text-decoration: underline;
         }
+        .abdp-logo .abdp-logo-img {
+            border-radius: 50%;
+            width: 180px;
+            height: 180px;
+            object-fit: cover;
+            position:fixed;
+            right:10px;
+            top:65px;
+        }
         .abdp-charts-container {
             display: flex;
             flex-wrap: wrap;
@@ -688,6 +699,16 @@ function abdp_settings_page() {
                 esc_html__('Support this project with one %s', 'anti-browser-ddos-protection'),
                 '<a href="https://buy.stripe.com/bIY5o70SSfam8Qo7ss" target="_blank">' . esc_html__('Donate', 'anti-browser-ddos-protection') . '</a>'
             ); ?>
+        </div>
+        <div class="abdp-logo">
+            <?php
+            $logo_url = plugin_dir_url(__FILE__) . 'Anti-Browser-DDoS-Protection.png';
+            printf(
+                '<img src="%s" alt="%s" class="abdp-logo-img"/>',
+                esc_url($logo_url),
+                esc_attr__('Anti Browser DDoS Protection Logo', 'anti-browser-ddos-protection')
+            );
+            ?>
         </div>
         <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
         
