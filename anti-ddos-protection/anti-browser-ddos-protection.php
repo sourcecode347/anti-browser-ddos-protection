@@ -1214,8 +1214,9 @@ function abdp_block_bots_early() {
         );
         update_option('abdp_blocked_ips', $blocked_ips);
         header('HTTP/1.1 403 Forbidden');
-        header('Content-Type: text/plain');
-        echo esc_html__('Anti Browser DDoS Protection: Blocked Bot Access Denied', 'anti-browser-ddos-protection');
+        header('Content-Type: text/html');
+        echo '<p style="color: #d32f2f; font-weight: bold; margin: 10px 0;"><b>Anti Browser DDoS Protection</b>: Blocked Bot Access Denied</p>';
+        echo '<p style="margin: 10px 0;">Visit GitHub Repository: <a href="https://github.com/sourcecode347/anti-browser-ddos-protection" target="_blank" style="color: #0073aa; text-decoration: underline;">Anti Browser DDoS Protection</a></p>';
         exit;
     }
 }
@@ -1292,10 +1293,11 @@ function abdp_rate_limit() {
     foreach ($banned_ips as $entry) {
         if ($entry['ip'] === $ip && $entry['expires'] > time()) {
             error_log('ABDP: Banned IP detected - IP: ' . $ip . ', User Agent: ' . $user_agent);
-            header('HTTP/1.1 403 Forbidden');
-            header('Content-Type: text/plain');
-            echo esc_html__('Anti Browser DDoS Protection: Your IP is banned due to excessive requests.', 'anti-browser-ddos-protection');
-            exit;
+                header('HTTP/1.1 403 Forbidden');
+                header('Content-Type: text/html');
+                echo '<p style="color: #d32f2f; font-weight: bold; margin: 10px 0;"><b>Anti Browser DDoS Protection</b>: Your IP has been banned due to repeated excessive requests.</p>';
+                echo '<p style="margin: 10px 0;">Visit GitHub Repository: <a href="https://github.com/sourcecode347/anti-browser-ddos-protection" target="_blank" style="color: #0073aa; text-decoration: underline;">Anti Browser DDoS Protection</a></p>';
+                exit;
         }
     }
 
@@ -1344,15 +1346,16 @@ function abdp_rate_limit() {
                 // Clear block count transient
                 delete_transient($block_count_key);
                 header('HTTP/1.1 403 Forbidden');
-                header('Content-Type: text/plain');
-                echo esc_html__('Anti Browser DDoS Protection: Your IP has been banned due to repeated excessive requests.', 'anti-browser-ddos-protection');
+                header('Content-Type: text/html');
+                echo '<p style="color: #d32f2f; font-weight: bold; margin: 10px 0;"><b>Anti Browser DDoS Protection</b>: Your IP has been banned due to repeated excessive requests.</p>';
+                echo '<p style="margin: 10px 0;">Visit GitHub Repository: <a href="https://github.com/sourcecode347/anti-browser-ddos-protection" target="_blank" style="color: #0073aa; text-decoration: underline;">Anti Browser DDoS Protection</a></p>';
                 exit;
             }
-
             header('HTTP/1.1 429 Too Many Requests');
             header('Retry-After: ' . absint($time_window));
-            header('Content-Type: text/plain');
-            echo esc_html__('Anti Browser DDoS Protection: Too many requests. Please slow down.', 'anti-browser-ddos-protection');
+            header('Content-Type: text/html');
+            echo '<p style="color: #d32f2f; font-weight: bold; margin: 10px 0;"><b>Anti Browser DDoS Protection</b>: Too many requests. Please slow down.</p>';
+            echo '<p style="margin: 10px 0;">Visit GitHub Repository: <a href="https://github.com/sourcecode347/anti-browser-ddos-protection" target="_blank" style="color: #0073aa; text-decoration: underline;">Anti Browser DDoS Protection</a></p>';
             exit;
         } else {
             set_transient($transient_key, $request_count + 1, $time_window);
