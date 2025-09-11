@@ -666,7 +666,7 @@ function abdp_settings_page() {
     ?>
     <style>
         <?php
-            if($device=="compute"){
+            if($device=="computer"){
                 echo "
                 .abdp-donate-link {
                     position: fixed;
