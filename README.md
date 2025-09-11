@@ -1,4 +1,4 @@
-# anti-browser-ddos-protection
+# Anti Browser DDoS Protection
 Protects WordPress from DDoS with rate limiting, bot detection, blocking, Cloudflare support, logs, charts, and bot list export/import.
 
 === Anti Browser DDoS Protection ===
