@@ -659,7 +659,9 @@ function abdp_settings_page() {
     ?>
     <style>
         .abdp-donate-link {
-            position: relative;
+            position: fixed;
+            top:35px;
+            right:10px;
             margin-bottom: 20px;
             text-align: right;
             font-size: 16px;
