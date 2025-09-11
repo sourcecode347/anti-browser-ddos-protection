@@ -16,3 +16,8 @@ msnbot
 bingbot
 Stripebot
 msnbot-media
+meta-externalagent
+meta-externalfetcher
+meta-externalads
+meta-webindexer
+facebookcatalog
