@@ -66,12 +66,9 @@ Ideal for WordPress sites seeking enhanced security against automated attacks, w
 1. Upload the `anti-ddos-protection` folder to the `/wp-content/plugins/` directory, or install the plugin directly through the WordPress plugins screen.
 2. Activate the plugin through the 'Plugins' screen in WordPress.
 3. **Disable any WordPress caching plugins** (e.g., WP Super Cache, W3 Total Cache) to ensure the Anti Browser DDoS Protection functions correctly, as caching plugins may bypass DDoS protection checks.
-4. **Enable Browser Caching** using a service like Cloudflare:
-   - Log in to your Cloudflare dashboard.
-   - Go to **Rules** > **Page Rules**.
-   - Create a new rule with URL pattern `https://yourdomain.com/*`.
-   - Set **Browser Cache TTL** to a value like 8 days (604800 seconds) for optimal performance.
-   - Save and deploy the rule.
+4. **Enable Browser Caching** using a service like Cloudflare and set DNS Records Proxy Status to DNS only.
+   - Go Caching > Configuration : and set Standard type Caching and Configure Cloudflare Browser Cache TTL. (e.g., 8 days)
+   - Set DNS Records Proxy Status to DNS only.
 5. Navigate to **Settings > Anti DDoS** to configure the plugin settings:
    - Set the **Maximum Requests (Regular Users)** (e.g., 10 requests).
    - Set the **Time Window** in seconds (e.g., 60 seconds).
@@ -220,7 +217,10 @@ The plugin automatically deletes its transients, blocked IP logs, banned IP logs
 == Bugs ==
 
 Caching plugins such as WP Super Cache, W3 Total Cache, and others may bypass the DDoS protection provided by Anti Browser DDoS Protection, serving cached pages without triggering the plugin's checks for blocked bots, rate limiting, or banned IPs.
-- **Solution**: Disable all WordPress caching plugins to ensure full DDoS protection. Instead, enable Browser Caching using a service like Cloudflare to improve performance without compromising security. Configure Cloudflare Browser Cache TTL (e.g., 8 days) via **Rules > Page Rules** in the Cloudflare dashboard.
+- **Solution**: Disable all WordPress caching plugins to ensure full DDoS protection. Instead, enable Browser Caching using a service like Cloudflare to improve performance without compromising security. 
+Enable standard type Caching and Configure Cloudflare Browser Cache TTL (e.g., 8 days) via **Caching > Configuration** in the Cloudflare dashboard.
+
+Enabling Cloudflare in DNS Records to Proxy Status Proxied creates a critical website error for Bots like facebookexternalhit, the solution is to set the Proxy Status to DNS only.
 
 == Upgrade Notice ==
 
