@@ -19,7 +19,7 @@ Requires at least: 5.0
 
 Tested up to: 6.8
 
-Stable tag: 2.21
+Stable tag: 2.22
 
 Requires PHP: 8.3
 
@@ -68,7 +68,7 @@ Ideal for WordPress sites seeking enhanced security against automated attacks, w
 3. **Disable any WordPress caching plugins** (e.g., WP Super Cache, W3 Total Cache) to ensure the Anti Browser DDoS Protection functions correctly, as caching plugins may bypass DDoS protection checks.
 4. **Enable Browser Caching** using a service like Cloudflare and set DNS Records Proxy Status to DNS only.
    - Go Caching > Configuration : and set Standard type Caching and Configure Cloudflare Browser Cache TTL. (e.g., 8 days)
-   - Set DNS Records Proxy Status to DNS only.
+   - Set DNS Records Proxy Status to Proxied For More DDoS Security.
 5. Navigate to **Settings > Anti DDoS** to configure the plugin settings:
    - Set the **Maximum Requests (Regular Users)** (e.g., 10 requests).
    - Set the **Time Window** in seconds (e.g., 60 seconds).
@@ -138,6 +138,9 @@ The plugin automatically deletes its transients, blocked IP logs, banned IP logs
 8. Example of the "Anti Browser DDoS Protection: Your IP is banned due to excessive requests." error page when an IP is banned.
 
 == Changelog ==
+
+= 2.22 =
+* Fixed a bug that returned a critical site error to bots like facebookexternalhit when Cloudflare's Proxy Status was Proxied.
 
 = 2.21 =
 * Added plugin logo to the admin panel and plugin page for better branding.
@@ -218,11 +221,12 @@ The plugin automatically deletes its transients, blocked IP logs, banned IP logs
 
 Caching plugins such as WP Super Cache, W3 Total Cache, and others may bypass the DDoS protection provided by Anti Browser DDoS Protection, serving cached pages without triggering the plugin's checks for blocked bots, rate limiting, or banned IPs.
 - **Solution**: Disable all WordPress caching plugins to ensure full DDoS protection. Instead, enable Browser Caching using a service like Cloudflare to improve performance without compromising security. 
-Enable standard type Caching and Configure Cloudflare Browser Cache TTL (e.g., 8 days) via **Caching > Configuration** in the Cloudflare dashboard.
-
-Enabling Cloudflare in DNS Records to Proxy Status Proxied creates a critical website error for Bots like facebookexternalhit, the solution is to set the Proxy Status to DNS only.
+   Enable standard type Caching and Configure Cloudflare Browser Cache TTL (e.g., 8 days) via **Caching > Configuration** in the Cloudflare dashboard.
 
 == Upgrade Notice ==
+
+= 2.22 =
+This version fixed a bug that returned a critical site error to bots like facebookexternalhit.
 
 = 2.21 =
 This version adds a plugin logo for better branding and fixes an admin notice that appeared on every admin panel refresh. It also includes export and import functionality for **Excluded Bots**, **Bot IP Ranges**, and **Blocked Bots** lists, allowing you to back up lists to .txt files or append new entries from .txt files with automatic duplicate removal. Update to improve branding, resolve the admin notice issue, and manage bot lists more efficiently.
