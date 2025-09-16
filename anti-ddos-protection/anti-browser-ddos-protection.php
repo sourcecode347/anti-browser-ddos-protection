@@ -263,6 +263,7 @@ function abdp_enqueue_scripts($hook) {
         'apiBase' => rest_url('abdp/v1'),
         'nonce' => wp_create_nonce('wp_rest'),
         'ajaxUrl' => admin_url('admin-ajax.php'),
+        'logExpiresDays' => get_option('abdp_log_expires_days', 5), // Add this line to pass log expiration days
     ));
 }
 

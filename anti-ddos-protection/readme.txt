@@ -48,7 +48,7 @@ Ideal for WordPress sites seeking enhanced security against automated attacks, w
 1. Upload the `anti-ddos-protection` folder to the `/wp-content/plugins/` directory, or install the plugin directly through the WordPress plugins screen.
 2. Activate the plugin through the 'Plugins' screen in WordPress.
 3. **Disable any WordPress caching plugins** (e.g., WP Super Cache, W3 Total Cache) to ensure the Anti Browser DDoS Protection functions correctly, as caching plugins may bypass DDoS protection checks.
-4. **Enable Browser Caching** using a service like Cloudflare and set DNS Records Proxy Status to DNS only.
+4. **Enable Browser Caching** using a service like Cloudflare and set DNS Records Proxy Status to Proxied.
    - Go Caching > Configuration : and set Standard type Caching and Configure Cloudflare Browser Cache TTL. (e.g., 8 days)
    - Set DNS Records Proxy Status to Proxied For More DDoS Security.
 5. Navigate to **Settings > Anti DDoS** to configure the plugin settings:

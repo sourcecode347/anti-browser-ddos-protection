@@ -93,6 +93,19 @@
         })
         .then(response => response.json())
         .then(data => {
+            const currentTime = new Date().getTime();
+            const expirationTime = currentTime - (abdpData.logExpiresDays * 24 * 60 * 60 * 1000);
+
+            data = data.filter(entry => {
+                const entryTime = new Date(entry.timestamp).getTime();
+                if (endpoint === '/banned-ips') {
+                    const expiresTime = new Date(entry.expires).getTime();
+                    return entryTime >= expirationTime && expiresTime > currentTime;
+                } else {
+                    return entryTime >= expirationTime;
+                }
+            });
+
             const tbody = document.querySelector(`#${tableId} tbody`);
             if (!tbody) return;
             tbody.innerHTML = ''; // Clear existing rows
