@@ -1,6 +1,6 @@
 === Anti Browser DDoS Protection ===
 
-Author: SourceCode347
+Author: sourcecode347
 Contributors: sourcecode347
 Plugin Name: Anti Browser DDoS Protection
 Plugin URI: https://github.com/sourcecode347/anti-browser-ddos-protection

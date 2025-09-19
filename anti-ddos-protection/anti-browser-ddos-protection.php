@@ -3,7 +3,7 @@
 Plugin Name: Anti Browser DDoS Protection
 Description: Rate limiting with admin panel, bot exclusions, bot IP ranges management with duplicate removal, high traffic bot logging, static asset exclusion, blocked IP logging with User Agent, IP banning with User Agent, Cloudflare real IP support, blocked bots by User Agent, auto-refresh logs every 30 seconds, automatic log expiration, and export/import for bot lists.
 Version: 2.22
-Author: SourceCode347
+Author: sourcecode347
 License: GPL v2 or later
 Text Domain: anti-browser-ddos-protection
 */
