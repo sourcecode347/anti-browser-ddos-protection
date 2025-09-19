@@ -3,7 +3,7 @@ Protects WordPress from DDoS with rate limiting, bot detection, blocking, Cloudf
 
 === Anti Browser DDoS Protection ===
 
-Author: SourceCode347
+Author: sourcecode347
 
 Contributors: sourcecode347
 
