@@ -1,3 +1,4 @@
 MJ12bot
 SemrushBot
 DotBot
+HeadlessChrome
