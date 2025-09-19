@@ -190,37 +190,61 @@ function abdp_admin_notice() {
 
 // Clean up expired logs
 function abdp_cleanup_expired_logs() {
+    // Get the log expiration days setting
     $log_expires_days = absint(get_option('abdp_log_expires_days', 5));
     $expiration_time = time() - ($log_expires_days * DAY_IN_SECONDS);
 
+    // Clean up blocked_ips
     $blocked_ips = get_option('abdp_blocked_ips', array());
     $blocked_ips = array_filter($blocked_ips, function($entry) use ($expiration_time) {
         return $entry['timestamp'] >= $expiration_time;
     });
     update_option('abdp_blocked_ips', array_values($blocked_ips));
 
+    // Clean up banned_ips
     $banned_ips = get_option('abdp_banned_ips', array());
     $banned_ips = array_filter($banned_ips, function($entry) use ($expiration_time) {
         return $entry['timestamp'] >= $expiration_time && $entry['expires'] > time();
     });
     update_option('abdp_banned_ips', array_values($banned_ips));
 
+    // Clean up high_traffic_bots
     $high_traffic_bots = get_option('abdp_high_traffic_bots', array());
     $high_traffic_bots = array_filter($high_traffic_bots, function($entry) use ($expiration_time) {
         return $entry['timestamp'] >= $expiration_time;
     });
     update_option('abdp_high_traffic_bots', array_values($high_traffic_bots));
+
+    // Log for debugging purposes
+    error_log('ABDP Cleanup Logs ran at ' . date('Y-m-d H:i:s'));
 }
 
 // Schedule log cleanup
-add_action('abdp_cleanup_logs_event', 'abdp_cleanup_expired_logs');
 function abdp_schedule_log_cleanup() {
     if (!wp_next_scheduled('abdp_cleanup_logs_event')) {
         wp_schedule_event(time(), 'hourly', 'abdp_cleanup_logs_event');
+        error_log('ABDP Cleanup Logs event scheduled at ' . date('Y-m-d H:i:s'));
     }
 }
 
+// Schedule cleanup on plugin activation
 register_activation_hook(__FILE__, 'abdp_schedule_log_cleanup');
+
+// Clear scheduled event on plugin deactivation
+function abdp_deactivate_cleanup() {
+    wp_clear_scheduled_hook('abdp_cleanup_logs_event');
+}
+register_deactivation_hook(__FILE__, 'abdp_deactivate_cleanup');
+
+// Ensure the event is scheduled on every page load
+add_action('init', function() {
+    if (!wp_next_scheduled('abdp_cleanup_logs_event')) {
+        abdp_schedule_log_cleanup();
+    }
+});
+
+// Hook for executing the cleanup
+add_action('abdp_cleanup_logs_event', 'abdp_cleanup_expired_logs');
 
 // AJAX handler for refreshing nonce
 add_action('wp_ajax_abdp_refresh_nonce', 'abdp_refresh_nonce');
@@ -435,7 +459,7 @@ function abdp_settings_page() {
             </div>
             <div class="abdp-logo">
                 <?php
-                    $logo_url = plugin_dir_url(__FILE__) . 'Anti-Browser-DDoS-Protection.png';
+                    $logo_url = plugin_dir_url(__FILE__) . 'assets/img/Anti-Browser-DDoS-Protection.png';
                     printf(
                         '<img src="%s" alt="%s" class="abdp-logo-img"/>',
                         esc_url($logo_url),
