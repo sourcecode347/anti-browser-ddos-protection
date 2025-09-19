@@ -1,0 +1,45 @@
+.abdp-donate-link {
+    position: fixed;
+    top: 60px;
+    left: 10px;
+    right: auto;
+    text-align: left;
+    z-index: 1000;
+    background: #fff;
+    padding: 5px 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    width: auto;
+    max-width: 90%;
+}
+
+.abdp-logo {
+    position: relative;
+    margin: 0 auto 30px;
+    text-align: center;
+    width: 200px; /* Σταθερό πλάτος */
+    height: 200px; /* Σταθερό ύψος */
+}
+
+.abdp-logo .abdp-logo-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    margin: 0 auto;
+}
+
+.wrap {
+    padding-top: 80px;
+    padding-bottom: 20px;
+}
+
+.abdp-charts-container {
+    flex-direction: column;
+    padding-top: 20px;
+}
+
+.abdp-chart-wrapper {
+    width: 100%;
+    min-width: auto;
+    margin-bottom: 10px;
+}
