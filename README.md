@@ -19,7 +19,7 @@ Requires at least: 5.0
 
 Tested up to: 6.8
 
-Stable tag: 2.22
+Stable tag: 2.26
 
 Requires PHP: 8.3
 
@@ -63,7 +63,7 @@ Ideal for WordPress sites seeking enhanced security against automated attacks, w
 
 == Installation ==
 
-1. Upload the `anti-ddos-protection` folder to the `/wp-content/plugins/` directory, or install the plugin directly through the WordPress plugins screen.
+1. Upload the `anti-browser-ddos-protection` folder to the `/wp-content/plugins/` directory, or install the plugin directly through the WordPress plugins screen.
 2. Activate the plugin through the 'Plugins' screen in WordPress.
 3. **Disable any WordPress caching plugins** (e.g., WP Super Cache, W3 Total Cache) to ensure the Anti Browser DDoS Protection functions correctly, as caching plugins may bypass DDoS protection checks.
 4. **Enable Browser Caching** using a service like Cloudflare and set DNS Records Proxy Status to Proxied.
@@ -137,7 +137,29 @@ The plugin automatically deletes its transients, blocked IP logs, banned IP logs
 7. Example of the "Anti Browser DDoS Protection: Blocked Bot Access Denied" error page when a blocked bot is detected.
 8. Example of the "Anti Browser DDoS Protection: Your IP is banned due to excessive requests." error page when an IP is banned.
 
+== Plugin Assets img/ ==
+
+== Icon Image ==
+
+Normal: icon-128x128.png
+High-DPI (Retina): icon-256x256.png
+
+== Screenshots ==
+
+1. Rate limiting Settings
+2. Charts
+3. Logs
+
 == Changelog ==
+
+= 2.26 =
+* The structure of the application has been corrected.
+
+= 2.24 / 2.25 =
+* Added Icons and Screenshots to wordpress plugin repository.
+
+= 2.23 =
+* Fixed a bug that not auto-delete the expired logs.
 
 = 2.22 =
 * Fixed a bug that returned a critical site error to bots like facebookexternalhit when Cloudflare's Proxy Status was Proxied.
@@ -224,6 +246,15 @@ Caching plugins such as WP Super Cache, W3 Total Cache, and others may bypass th
    Enable standard type Caching and Configure Cloudflare Browser Cache TTL (e.g., 8 days) via **Caching > Configuration** in the Cloudflare dashboard.
 
 == Upgrade Notice ==
+
+= 2.26 =
+This version makes the structure of the application has been corrected.
+
+= 2.24 / 2.25 =
+This version added Icons and Screenshots to wordpress plugin repository.
+
+= 2.23 =
+This version fixed a bug that not auto-delete the expired logs.
 
 = 2.22 =
 This version fixed a bug that returned a critical site error to bots like facebookexternalhit.
